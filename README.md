@@ -14,7 +14,7 @@ Meeting each Friday at 16:00
 # Preparation Material
 
 ## Project Profile
-https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5
+[Overleaf](https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5).
 
 ## Rust
 

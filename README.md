@@ -5,6 +5,8 @@ Meeting each Friday at 16:00
 
 # Structure of Repo
 
+
+## Documentation
 - `/docs` - all documentation and material is contained here
 - `/docs/preparation` - extra preparation material
 

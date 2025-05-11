@@ -27,7 +27,7 @@ https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5
 - Conversion of some traditional database operators and basic logic gates (refer the paper: https://www.usenix.org/system/files/nsdi23-liagouris.pdf)
 - Micro-benchmark of the framework on some real-world datasets (e.g., Hospital, Financial Organization)
 
-## Special prep 
+## Special preparation
 - Execution of XOR, AND gate protocol [link] (./docs)
 
 # Goals

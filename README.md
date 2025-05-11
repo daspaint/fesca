@@ -28,7 +28,7 @@ Meeting each Friday at 16:00
 - Micro-benchmark of the framework on some real-world datasets (e.g., Hospital, Financial Organization)
 
 ## Special preparation
-- Execution of XOR, AND gate protocol [link] (./docs/)
+- Execution of XOR, AND gate protocol [link](./docs/)
 
 # Goals
 

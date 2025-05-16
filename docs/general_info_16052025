@@ -1,0 +1,30 @@
+Project Profile document link:
+    https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5
+
+1st organizational mail from Long GU:
+    Dear all,
+
+    Thanks for participating the first meeting of the lab. I was using Google to send out the zoom link, everyone should receive it. I'm sorry @denisboztepe@icloud.com Denis that you didn't get the link. To make sure that everyone will receive it, I will apply the Zulip account for all of you. You will receive the notification later either this week or next.
+
+    These are the minimum requirements of the project:
+
+    Implement a communication framework (based on gRPC) that allows computing nodes to exchange messages in general  => Rust: tonic
+    Implement the Replicated Secret Sharing (RSS) protocol that includes:
+    Correlated Randomness Generation
+    Message Exchange among computing nodes
+    Execution of XOR, AND gate protocol  (I will send you a one-bit example)
+    Conversion of some traditional database operators and basic logic gates (refer the paper: https://www.usenix.org/system/files/nsdi23-liagouris.pdf)
+    Oblivious Query Execution (https://github.com/CASP-Systems-BU/Secrecy/tree/main)
+    Micro-benchmark of the framework on some real-world datasets (e.g., Hospital, Financial Organization)
+    You can take a look of them and try to understand the meaning behind. In the attachment, you will see a minimum working example of the RSS.
+
+    For @darya.igonina@stud.tu-darmstadt.de Darya, who wants to get 9 CPs. I would suggest that you start with the requirement of 6CPs. And the bonus parts that you can choose are following:
+
+    Integrate advanced oblivious operators (LIKE, Order By...)
+    Optimizations of existing protocols or queries (Reduce online computing costs...)
+    An accurate model to convert queries to basic logic gate (not just rule-based)
+    A full benchmark on more real world queries
+    You need to claim at least one extra contribution in your report. The last one is the easiest to achieve😊
+
+    About the concrete time of the recurring meeting, we can decide until next Friday May. 16th. I will ping you in the Zulip once your Zulip account is ready.
+

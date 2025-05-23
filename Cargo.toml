@@ -1,0 +1,24 @@
+# This cargo.toml configuration file has been updated:
+name = "fesca"
+version = "0.1.0"
+edition = "2025"
+description = "Framework for Efficient Secure Collaborative Analytics"
+authors = ["Mimoun Mendoughe", "Darya Igonina", "Alisher Darmenov", "Denis Boztepe"]
+readme = "README.md"
+
+[workspace]
+members = [
+    "src/core",
+    "src/node",
+    "src/interfaces/data_owner",
+    "src/interfaces/analyst",
+    "src/protocols",
+    "src/query",
+]
+
+[dependencies]
+# Core dependencies
+tokio = { version = "1.28", features = ["full"] }
+tonic = "0.9"  # gRPC framework
+prost = "0.11"  # Protocol buffers
+

@@ -1,38 +1,33 @@
-slide 
-computing nodes on docker, 4 simple primitives
-then combine them to complexer operations
-cpp dpesnt allow the extension
-you need to extend the code
-translate it to rust
-people add the sql queries
-were not doing software
-how you split one bit into 3 parties - the code that sent long
-real impl. in cpp in secrecy
+General purpose of the project is to extend the already existing SECRECY framework by implementing it in Rust, allowing modularity and addition of new secure relational operations. Also, the data exchange will be implemented using a method called replicated secret sharing and stored across three fixed computing nodes.
 
-only those 8 sql
-the framework shuold be extendable to every sql query
+Identified //2 main interfaces// of the project:
+1. Secret sharing for data owners
+    - (functional req) We need to split up data owners' data for the 3 computing parties. @LongGu already implemented this for 1 bit. The code is here: ./docs/preparation/RSS_rust-main.
+    - (technical req) The division of data for the 3 computing parties happens independently of computing nodes, may even happen on a centralized compute. The information is going to be either like a vector or a bitstring.
 
-1. impl the arithm and boolean primitives
-2. complex operations (eq, ineq)
-3. SQL operators
+2. Oblivious query execution.
+    - (technical req) Developers execute queries on already securely split up data.
+    - (functional req) Developers that are going to use our framework would need to be able to add custom SQL queries, that are not pre-implemented by us. This is done with the usage of MPC Primitives. There are 4 of them: add, and, xor and mul(x), see docs/team_meetings/primitives_to_relational_analytics.png
+    - (technical req) Computing nodes (computation parties) dockerized
 
-the informtion is a like a vector or a bitstring
 
-the 2 interfaces (todos)
-1. impl. secret sharing for data owners, doesnt have to do anything with computing nodes. Garbage values ?
-2. Developer comes at 1 and he can execute the query on secretly shared
+Approximate query execution procedure (based on original Secrecy paper):
+1. Query is submitted by data analyst to our framework via terminal
+2. Framework compiles optimal execution plan
+3. Framework asks data owners to divide their data into parts (can be random bitstrings) and sends them to a computation party. (technical req) This //secret sharing// happens only once for one query execution.
+4. Each computation party receives 2/3 generated shares.
+5. Secure computation by a wide area network of clusters
+6. Send the result shares to data analyst, who can reconstruct the query output.
 
-additional rq: impl. triple computation.
-xor and and are exchanged, and then adding the 3rd research question
-add one rq to 9cp, what's the merit of that
+Discussed the project profile draft:
+1. Topic section is done.
+2. Research question:
+    - Implement triple computation (@mmendoughe, referring to https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5 Secure Two-Party computation slides)
+    - identify more RQs (@daspaint, @Denishcke)
+3. Contribution (@mmendoughe, @Anatomik5): Describe distiction to existing approaches, emphasize the diffs. Do not describe the existing apps. Mention major limitations. Main contributions identified in the meeting: extensibility, modularity, multiplication triples could reduce the sync costs.
+4. Evaluation: Identify relevant benchmarks for 6 CP and 9 CP work packages each. (@daspaint, @Denishcke)
 
-3. contribution: distiction to existing approaches, emphasize the diffs. not describe the existing apps. major limitations. 
-extensibility
-multipliocation triples to reduce the sync costs
+Questions for Long and Shaza:
+1. Frontend? Dahsboards? Usability increase?
 
-frontend to data owners? usability increase? maybe in the end
-like a dashboard. it is needed to be integrated ?
-
-4. evaluation? for 6 and 9 cp. me and denis
-
-room for friday in stami
+@Denishcke: Book a room for the friday Meeting in Stami, 30.5.25. at 4 pm.

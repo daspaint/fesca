@@ -1,0 +1,16 @@
+Secrecy paper:
+    https://www.usenix.org/system/files/nsdi23-liagouris.pdf
+
+Project Profile document link:
+    https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5
+
+Rust Documentation:
+    https://doc.rust-lang.org/book/
+
+    https://github.com/rust-lang/rustlings
+
+Implemented one-bit-sharing protocol, to extend:
+    ./docs/preparation/RSS_rust-main
+
+Secure 2 party computation:
+    https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5

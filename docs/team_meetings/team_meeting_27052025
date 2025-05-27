@@ -1,0 +1,33 @@
+General purpose of the project is to extend the already existing SECRECY framework by implementing it in Rust, allowing modularity and addition of new secure relational operations. Also, the data exchange will be implemented using a method called replicated secret sharing and stored across three fixed computing nodes.
+
+Identified //2 main interfaces// of the project:
+1. Secret sharing for data owners
+    - (functional req) We need to split up data owners' data for the 3 computing parties. @LongGu already implemented this for 1 bit. The code is here: ./docs/preparation/RSS_rust-main.
+    - (technical req) The division of data for the 3 computing parties happens independently of computing nodes, may even happen on a centralized compute. The information is going to be either like a vector or a bitstring.
+
+2. Oblivious query execution.
+    - (technical req) Developers execute queries on already securely split up data.
+    - (functional req) Developers that are going to use our framework would need to be able to add custom SQL queries, that are not pre-implemented by us. This is done with the usage of MPC Primitives. There are 4 of them: add, and, xor and mul(x), see docs/team_meetings/primitives_to_relational_analytics.png
+    - (technical req) Computing nodes (computation parties) dockerized
+
+
+Approximate query execution procedure (based on original Secrecy paper):
+1. Query is submitted by data analyst to our framework via terminal
+2. Framework compiles optimal execution plan
+3. Framework asks data owners to divide their data into parts (can be random bitstrings) and sends them to a computation party. (technical req) This //secret sharing// happens only once for one query execution.
+4. Each computation party receives 2/3 generated shares.
+5. Secure computation by a wide area network of clusters
+6. Send the result shares to data analyst, who can reconstruct the query output.
+
+Discussed the project profile draft:
+1. Topic section is done.
+2. Research question:
+    - Implement triple computation (@mmendoughe, referring to https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5 Secure Two-Party computation slides)
+    - identify more RQs (@daspaint, @Denishcke)
+3. Contribution (@mmendoughe, @Anatomik5): Describe distiction to existing approaches, emphasize the diffs. Do not describe the existing apps. Mention major limitations. Main contributions identified in the meeting: extensibility, modularity, multiplication triples could reduce the sync costs.
+4. Evaluation: Identify relevant benchmarks for 6 CP and 9 CP work packages each. (@daspaint, @Denishcke)
+
+Questions for Long and Shaza:
+1. Frontend? Dahsboards? Usability increase?
+
+@Denishcke: Book a room for the friday Meeting in Stami, 30.5.25. at 4 pm.

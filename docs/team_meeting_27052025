@@ -1,0 +1,38 @@
+slide 
+computing nodes on docker, 4 simple primitives
+then combine them to complexer operations
+cpp dpesnt allow the extension
+you need to extend the code
+translate it to rust
+people add the sql queries
+were not doing software
+how you split one bit into 3 parties - the code that sent long
+real impl. in cpp in secrecy
+
+only those 8 sql
+the framework shuold be extendable to every sql query
+
+1. impl the arithm and boolean primitives
+2. complex operations (eq, ineq)
+3. SQL operators
+
+the informtion is a like a vector or a bitstring
+
+the 2 interfaces (todos)
+1. impl. secret sharing for data owners, doesnt have to do anything with computing nodes. Garbage values ?
+2. Developer comes at 1 and he can execute the query on secretly shared
+
+additional rq: impl. triple computation.
+xor and and are exchanged, and then adding the 3rd research question
+add one rq to 9cp, what's the merit of that
+
+3. contribution: distiction to existing approaches, emphasize the diffs. not describe the existing apps. major limitations. 
+extensibility
+multipliocation triples to reduce the sync costs
+
+frontend to data owners? usability increase? maybe in the end
+like a dashboard. it is needed to be integrated ?
+
+4. evaluation? for 6 and 9 cp. me and denis
+
+room for friday in stami

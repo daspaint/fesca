@@ -14,3 +14,9 @@ members = [
     "cloud",
     "helpers",
 ]
+
+[dependencies]
+analyst = { version = "0.1.0", path = "analyst" }
+client = { version = "0.1.0", path = "client" }
+cloud = { version = "0.1.0", path = "cloud" }
+helpers = { version = "0.1.0", path = "helpers" }

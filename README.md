@@ -9,6 +9,12 @@ Meeting each Friday at 16:00
 ## Documentation
 - `/docs` - all documentation and material is contained here
 - `/docs/preparation` - extra preparation material
+- `/docs/Secrecy` - working project of Secrecy test
+- `/fesca` - main project
+- `/fesca/client` - main project from side of client
+- `/fesca/cloud` - main project from side of cloud
+- `/fesca/analyst` - main project from side of data analyst
+
 
 
 # Preparation Material

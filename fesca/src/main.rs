@@ -1,3 +1,6 @@
+use helpers::read_config::read_config;
+
 fn main() {
-    println!("FESCA is here");
+    let role = read_config("fesca/config.txt", "role:");
+    println!("FESCA is here {:?}", role);
 }

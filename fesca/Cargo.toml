@@ -20,3 +20,5 @@ analyst = { version = "0.1.0", path = "analyst" }
 client = { version = "0.1.0", path = "client" }
 cloud = { version = "0.1.0", path = "cloud" }
 helpers = { version = "0.1.0", path = "helpers" }
+rand = "0.9.1"
+serde = "1.0.219"

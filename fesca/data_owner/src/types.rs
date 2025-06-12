@@ -33,14 +33,19 @@ pub struct SharedPartyData {
 /// Defines the possible data types for columns in the shared table.
 /// This is used to ensure proper interpretation of the shared values
 /// when they are reconstructed by the three computing nodes.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum Charset {
+    Ascii,       // 7 bits per char
+    Utf8,        // Variable, but use fixed-length encoding per char
+    Custom { bits_per_char: usize },
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum ColumnType {
-    Integer,
-    Float,
     Boolean,
-    String,
-    Date,
-    Custom(String),
+    UnsignedInt { bit_width: usize },       // u8, u16, u32, u64, etc.
+    Float { bit_width: usize },             // f32 = 32 bits, f64 = 64 bits
+    String { max_chars: usize, charset: Charset }, // Encoded per-char
 }
 
 /// Describes the metadata for a single column in the shared table.
@@ -49,7 +54,6 @@ pub enum ColumnType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDescriptor {
     pub name: String,
-    pub bit_width: u32,
     pub type_hint: ColumnType,
 }
 

@@ -34,7 +34,7 @@ Meeting each Friday at 16:00
 - Micro-benchmark of the framework on some real-world datasets (e.g., Hospital, Financial Organization)
 - [Secrecy repo] (https://github.com/CASP-Systems-BU/Secrecy.git)
 ## Special preparation
-- [Execution of XOR, AND gate protocol](./docs/)
+- [Execution of XOR, AND gate protocol] (./docs/)
 
 # Goals
 

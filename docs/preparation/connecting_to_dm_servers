@@ -1,0 +1,32 @@
+First follow all the instructions listed here:
+https://md.darmstadt.ccc.de/s/fcKBwUSrp#First-steps-to-set-up-your-Data-Management-account
+The config file for VPN is here: docs\DM Main.ovpn. This is important that all keys are in OpenSSH format.
+
+We can use the ZS server for our computing tasks. The nodes that are available to us are from zs01 to zs09. The following tutorial will be done using zs01.
+The URL for server is http://zs01.lab.dm.informatik.tu-darmstadt.de/
+
+You can check your VPN connection by typing 
+
+    ipconfig
+
+in Powershell or executing
+
+    ping zs01.lab.dm.informatik.tu-darmstadt.de
+
+1. After establishing VPN connection, it's time to connect to compute servers using SSH. For this place your
+    private key file in .ssh folder in the root folder of your PC (e.g. C:\Users\<YourUsername>\.ssh\yourname_id_rsa on Windows). Set the permissions of the private key file only to you and remove anything else.
+2. Open your command prompt and enter
+    ssh yourname@zs01.lab.dm.informatik.tu-darmstadt.de -i "C:\Users\<YourWindowsUsername>\.ssh\yourname_id_rsa"
+
+    Alternatively you can create a config file inside of .ssh folder with those contents:
+
+    Host zs01
+        HostName zs01.lab.dm.informatik.tu-darmstadt.de
+        User yourname
+        IdentityFile C:\Users\<YourWindowsUsername>\.ssh\yourname_id_rsa
+
+    If you didn't mess up with the keys you should see the following message:
+
+    Welcome to Ubuntu 24.04.2 LTS (GNU/Linux 6.8.0-55-generic x86_64)
+
+    * Documentation:  https://help.ubuntu.com ...

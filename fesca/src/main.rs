@@ -8,8 +8,16 @@ fn main() {
     match role.as_str() {
         "data_owner" => {
             println!("Initializing data owner node...");
-            if let Err(e) = read_csv_data("data/airtravel.csv") {
-                eprintln!("Error reading CSV data: {}", e);
+            let data_path = match read_config("config.txt", "data_path") {
+                Some(path) => path,
+                None => {
+                    eprintln!("Error: 'data_path' must be specified in config.txt");
+                    std::process::exit(1);
+                }
+            };
+            
+            if let Err(e) = read_csv_data(&data_path) {
+                eprintln!("Error reading CSV data from {}: {}", data_path, e);
                 std::process::exit(1);
             }
         }

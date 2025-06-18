@@ -1,434 +1,193 @@
-use rand::{Rng, thread_rng};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use anyhow::{Error, anyhow};
+use rand::Rng;
 
-/// Core secret share types for 3-party replicated secret sharing
-#[derive(Debug, Clone)]
-pub enum SecretShare {
-    Boolean {
-        share1: Vec<u8>,
-        share2: Vec<u8>,
-        party_id: u8,
-    },
-    Arithmetic {
-        share1: Vec<u64>,
-        share2: Vec<u64>,
-        party_id: u8,
-        modulus: u64,
-    },
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SecretShareType {
+    Boolean,
+    SQL,
 }
 
-/// MPC operation results with cost tracking
 #[derive(Debug, Clone)]
-pub struct MPCResult {
-    pub output: SecretShare,
-    pub communication_rounds: u32,
-    pub messages_sent: u32,
+pub struct SecretShare {
+    pub id: u64,
+    pub share: Vec<u8>,
+    pub share_type: SecretShareType,
+    pub party_id: u8, 
 }
 
-/// Main MPC operations for secure computing
+/* Helper */
+pub fn validate_shares_compatible(share1: &SecretShare, share2: &SecretShare)->Result<(), anyhow::Error>{
+    if share1.share_type != share2.share_type {
+        return Err(anyhow!("Shares must be of the same type"));
+    }
+    if share1.share.len() != share2.share.len() {
+        return Err(anyhow!("Shares must be of the same length"));
+    }
+    if share1.id != share2.id {
+        return Err(anyhow!("Shares must be of the same ID"));
+    }
+    return Ok(())
+}
+
+/* Boolean Helper Operations */
+pub fn xor_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretShare, Error> {
+    validate_shares_compatible(share1, share2)?;
+    
+    let xor_share: Vec<u8> = share1
+        .share
+        .iter()
+        .zip(&share2.share)
+        .map(|(a, b)| a ^ b)
+        .collect();
+    
+    Ok(SecretShare {
+        id: share1.id,
+        share: xor_share,
+        share_type: share1.share_type.clone(),
+        party_id: share1.party_id,
+    })
+}
+
+pub fn and_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretShare, Error> {
+    validate_shares_compatible(share1, share2)?;
+    
+    Err(anyhow!("AND operation is not supported for Boolean shares"))
+}
+
+pub fn or_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretShare, Error> {
+    let not_a = not_share(share1)?;
+    let not_b = not_share(share2)?;
+    let not_a_and_not_b = and_shares(&not_a, &not_b)?;
+    not_share(&not_a_and_not_b)
+}
+
+pub fn not_share(share: &SecretShare) -> Result<SecretShare, Error> {
+    if share.share_type != SecretShareType::Boolean {
+        return Err(anyhow!("NOT operation only supported for Boolean shares"));
+    }
+    
+    let result_share = if share.party_id == 1 {
+        share.share.iter().map(|byte| !byte).collect()
+    } else {
+        share.share.clone()
+    };
+    
+    Ok(SecretShare {
+        id: share.id,
+        share: result_share,
+        share_type: SecretShareType::Boolean,
+        party_id: share.party_id,
+    })
+}
+
+
+pub fn eq_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretShare, Error> {
+    validate_shares_compatible(share1, share2)?;
+    
+    let xor_result = xor_shares(share1, share2)?;
+    let not_xor = not_share(&xor_result)?;
+    
+    and_all_bits(&not_xor)
+}
+
+fn and_all_bits(share: &SecretShare) -> Result<SecretShare, Error> {
+    if share.share.is_empty() {
+        return Err(anyhow!("Cannot AND empty share"));
+    }
+    
+    let mut result = 0xFF_u8;
+    
+    for byte in &share.share {
+        for bit_pos in 0..8 {
+            let bit = (byte >> bit_pos) & 1;
+            result &= if bit == 1 { 0xFF } else { 0x00 };
+        }
+    }
+    
+    Ok(SecretShare {
+        id: share.id,
+        share: vec![result],
+        share_type: SecretShareType::Boolean,
+        party_id: share.party_id,
+    })
+}
+
+
+// Add this to your existing code
 impl SecretShare {
-    /// Generate 3-party shares for a secret value
-    pub fn share_secret(secret: &[u8]) -> [SecretShare; 3] {
-        let mut rng = thread_rng();
-        let len = secret.len();
-
-        let share1: Vec<u8> = (0..len).map(|_| rng.r#gen()).collect();
-        let share2: Vec<u8> = (0..len).map(|_| rng.r#gen()).collect();
-        let share3: Vec<u8> = secret
-            .iter()
-            .zip(&share1)
-            .zip(&share2)
-            .map(|((&s, &s1), &s2)| s ^ s1 ^ s2)
-            .collect();
-
-        [
-            SecretShare::Boolean {
-                share1: share1.clone(),
-                share2: share2.clone(),
-                party_id: 0,
-            },
-            SecretShare::Boolean {
-                share1: share2.clone(),
-                share2: share3.clone(),
-                party_id: 1,
-            },
-            SecretShare::Boolean {
-                share1: share3,
-                share2: share1,
-                party_id: 2,
-            },
-        ]
-    }
-
-    /// Reconstruct secret from all 3 shares
-    pub fn reconstruct(shares: &[SecretShare; 3]) -> Vec<u8> {
-        match (&shares[0], &shares[1], &shares[2]) {
-            (
-                SecretShare::Boolean { share1: s1, .. },
-                SecretShare::Boolean { share1: s2, .. },
-                SecretShare::Boolean { share1: s3, .. },
-            ) => s1
-                .iter()
-                .zip(s2)
-                .zip(s3)
-                .map(|((&a, &b), &c)| a ^ b ^ c)
-                .collect(),
-            _ => vec![],
-        }
-    }
-
-    /// Local XOR (no communication)
-    pub fn local_xor(&self, other: &SecretShare) -> Option<SecretShare> {
-        match (self, other) {
-            (
-                SecretShare::Boolean {
-                    share1: s1_a,
-                    share2: s2_a,
-                    party_id,
-                },
-                SecretShare::Boolean {
-                    share1: s1_b,
-                    share2: s2_b,
-                    ..
-                },
-            ) => {
-                let result_s1: Vec<u8> = s1_a.iter().zip(s1_b).map(|(&a, &b)| a ^ b).collect();
-                let result_s2: Vec<u8> = s2_a.iter().zip(s2_b).map(|(&a, &b)| a ^ b).collect();
-
-                Some(SecretShare::Boolean {
-                    share1: result_s1,
-                    share2: result_s2,
-                    party_id: *party_id,
-                })
-            }
-            _ => None,
-        }
-    }
-
-    /// Remote AND (requires communication)
-    pub fn remote_and(&self, other: &SecretShare) -> Option<MPCResult> {
-        match (self, other) {
-            (
-                SecretShare::Boolean {
-                    share1: s1_a,
-                    share2: s2_a,
-                    party_id,
-                },
-                SecretShare::Boolean {
-                    share1: s1_b,
-                    share2: s2_b,
-                    ..
-                },
-            ) => {
-                // Simplified AND - real implementation needs Beaver triples
-                let result_s1: Vec<u8> = s1_a.iter().zip(s1_b).map(|(&a, &b)| a & b).collect();
-                let result_s2: Vec<u8> = s2_a.iter().zip(s2_b).map(|(&a, &b)| a & b).collect();
-
-                Some(MPCResult {
-                    output: SecretShare::Boolean {
-                        share1: result_s1,
-                        share2: result_s2,
-                        party_id: *party_id,
-                    },
-                    communication_rounds: 1,
-                    messages_sent: 2,
-                })
-            }
-            _ => None,
-        }
-    }
-
-    /// Equality check
-    pub fn equals(&self, other: &SecretShare) -> Option<MPCResult> {
-        if let Some(diff) = self.local_xor(other) {
-            // Check if all bits are zero
-            let is_zero = match diff {
-                SecretShare::Boolean {
-                    share1,
-                    share2,
-                    party_id,
-                } => {
-                    let all_zero = share1.iter().all(|&b| b == 0) && share2.iter().all(|&b| b == 0);
-                    SecretShare::Boolean {
-                        share1: vec![if all_zero { 1 } else { 0 }],
-                        share2: vec![0],
-                        party_id,
-                    }
-                }
-                _ => return None,
-            };
-
-            Some(MPCResult {
-                output: is_zero,
-                communication_rounds: 3, // log₂(bit_length)
-                messages_sent: 6,
-            })
-        } else {
-            None
-        }
-    }
-}
-
-/// Relational MPC operations for database queries
-pub struct RelationalMPC;
-
-impl RelationalMPC {
-    /// Oblivious SELECT operation
-    pub fn select(records: &[SecretShare], predicates: &[SecretShare]) -> Vec<SecretShare> {
-        records
-            .iter()
-            .zip(predicates)
-            .filter_map(|(record, predicate)| {
-                record.remote_and(predicate).map(|result| result.output)
-            })
-            .collect()
-    }
-
-    /// Oblivious JOIN operation (nested loop)
-    pub fn join(left: &[SecretShare], right: &[SecretShare]) -> Vec<(SecretShare, SecretShare)> {
-        let mut results = Vec::new();
-
-        for l_record in left {
-            for r_record in right {
-                if let Some(eq_result) = l_record.equals(r_record) {
-                    // If equal, include both records
-                    results.push((l_record.clone(), r_record.clone()));
-                }
-            }
-        }
-
-        results
-    }
-
-    /// Oblivious sorting (simplified bitonic sort)
-    pub fn sort(data: &mut [SecretShare]) {
-        let n = data.len();
-        if n <= 1 {
-            return;
-        }
-
-        // Simplified bitonic sort network
-        for stage in 1..=((n as f64).log2() as usize) {
-            for substage in (1..=stage).rev() {
-                let distance = 1 << (substage - 1);
-                for i in 0..n {
-                    let partner = i ^ distance;
-                    if i < partner && partner < n {
-                        // Compare and swap if needed
-                        let (left, right) = data.split_at_mut(partner);
-                        Self::compare_and_swap(&mut left[i], &mut right[0]);
-                    }
-                }
-            }
-        }
-    }
-
-    /// Compare and conditionally swap two secret shares
-    fn compare_and_swap(a: &mut SecretShare, b: &mut SecretShare) {
-        // Simplified - real implementation would use oblivious comparison
-        // and conditional swap based on secret comparison result
-    }
-
-    /// GROUP BY aggregation
-    pub fn group_by(data: &[SecretShare], keys: &[SecretShare]) -> HashMap<Vec<u8>, u64> {
-        let mut groups = HashMap::new();
-
-        // First sort by group keys
-        let mut sorted_data: Vec<_> = data.iter().zip(keys).collect();
-        // Sort implementation would go here
-
-        // Then aggregate within groups
-        for (record, key) in sorted_data {
-            // Extract key value (simplified)
-            let key_bytes = match key {
-                SecretShare::Boolean { share1, .. } => share1.clone(),
-                SecretShare::Arithmetic { share1, .. } => {
-                    share1.iter().flat_map(|&x| x.to_le_bytes()).collect()
-                }
-            };
-
-            *groups.entry(key_bytes).or_insert(0) += 1;
-        }
-
-        groups
-    }
-
-    /// COUNT aggregation
-    pub fn count(data: &[SecretShare]) -> u64 {
-        data.len() as u64
-    }
-
-    /// SUM aggregation for arithmetic shares
-    pub fn sum(data: &[SecretShare]) -> Option<SecretShare> {
-        let mut sum_share1 = Vec::new();
-        let mut sum_share2 = Vec::new();
-        let mut party_id = 0;
-        let mut modulus = 0;
-
-        for share in data {
-            match share {
-                SecretShare::Arithmetic {
-                    share1,
-                    share2,
-                    party_id: pid,
-                    modulus: m,
-                } => {
-                    if sum_share1.is_empty() {
-                        sum_share1 = share1.clone();
-                        sum_share2 = share2.clone();
-                        party_id = *pid;
-                        modulus = *m;
-                    } else {
-                        for (i, (&s1, &s2)) in share1.iter().zip(share2).enumerate() {
-                            sum_share1[i] = (sum_share1[i] + s1) % modulus;
-                            sum_share2[i] = (sum_share2[i] + s2) % modulus;
-                        }
-                    }
-                }
-                _ => return None,
-            }
-        }
-
-        Some(SecretShare::Arithmetic {
-            share1: sum_share1,
-            share2: sum_share2,
+    /// Create a new secret share
+    pub fn new(id: u64, share: Vec<u8>, share_type: SecretShareType, party_id: u8) -> Self {
+        SecretShare {
+            id,
+            share,
+            share_type,
             party_id,
-            modulus,
-        })
-    }
-}
-
-/// Query optimization rules from SECRECY paper
-pub struct QueryOptimizer;
-
-impl QueryOptimizer {
-    /// Push blocking operators (ORDER BY, DISTINCT, GROUP BY) down
-    pub fn push_blocking_down(operations: &mut Vec<String>) {
-        // Move blocking operations closer to data sources
-        let mut blocking_ops = Vec::new();
-        let mut other_ops = Vec::new();
-
-        for op in operations.drain(..) {
-            if op.contains("ORDER BY") || op.contains("DISTINCT") || op.contains("GROUP BY") {
-                blocking_ops.push(op);
-            } else {
-                other_ops.push(op);
-            }
-        }
-
-        // Place blocking operations first
-        operations.extend(blocking_ops);
-        operations.extend(other_ops);
-    }
-
-    /// Push JOIN operations up (later in execution)
-    pub fn push_joins_up(operations: &mut Vec<String>) {
-        let mut joins = Vec::new();
-        let mut others = Vec::new();
-
-        for op in operations.drain(..) {
-            if op.contains("JOIN") {
-                joins.push(op);
-            } else {
-                others.push(op);
-            }
-        }
-
-        // Place non-join operations first, then joins
-        operations.extend(others);
-        operations.extend(joins);
-    }
-
-    /// Decompose JOIN + GROUP BY into SEMI-JOIN + partial aggregation
-    pub fn decompose_join_aggregation(query: &str) -> String {
-        if query.contains("JOIN") && query.contains("GROUP BY") {
-            // Replace with optimized semi-join approach
-            query
-                .replace("JOIN", "SEMI-JOIN")
-                .replace("GROUP BY", "PARTIAL_AGG")
-        } else {
-            query.to_string()
         }
     }
 }
 
-/// Cost model for MPC operations
-pub struct CostModel {
-    operation_costs: HashMap<String, u64>,
-    communication_costs: HashMap<String, u32>,
+/// Convert a value to its binary representation as bytes
+pub fn value_to_bytes(value: u64, byte_length: usize) -> Vec<u8> {
+    let mut bytes = vec![0u8; byte_length];
+    for i in 0..byte_length {
+        bytes[i] = ((value >> (i * 8)) & 0xFF) as u8;
+    }
+    bytes
 }
 
-impl CostModel {
-    pub fn new() -> Self {
-        let mut operation_costs = HashMap::new();
-        let mut communication_costs = HashMap::new();
-
-        // Costs based on SECRECY paper
-        operation_costs.insert("SELECT".to_string(), 1);
-        operation_costs.insert("JOIN".to_string(), 100);
-        operation_costs.insert("GROUP_BY".to_string(), 50);
-        operation_costs.insert("DISTINCT".to_string(), 50);
-        operation_costs.insert("ORDER_BY".to_string(), 50);
-
-        communication_costs.insert("SELECT".to_string(), 1);
-        communication_costs.insert("JOIN".to_string(), 1);
-        communication_costs.insert("GROUP_BY".to_string(), 10);
-        communication_costs.insert("DISTINCT".to_string(), 10);
-        communication_costs.insert("ORDER_BY".to_string(), 10);
-
-        Self {
-            operation_costs,
-            communication_costs,
-        }
+/// Convert bytes back to a value (for testing/verification)
+pub fn bytes_to_value(bytes: &[u8]) -> u64 {
+    let mut value = 0u64;
+    for (i, &byte) in bytes.iter().enumerate() {
+        value |= (byte as u64) << (i * 8);
     }
-
-    pub fn estimate_cost(&self, operation: &str, input_size: u64) -> (u64, u32) {
-        let op_cost = self.operation_costs.get(operation).unwrap_or(&1) * input_size;
-        let comm_cost = *self.communication_costs.get(operation).unwrap_or(&1);
-        (op_cost, comm_cost)
-    }
+    value
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_secret_sharing() {
-        let secret = vec![42u8, 100, 200];
-        let shares = SecretShare::share_secret(&secret);
-        let reconstructed = SecretShare::reconstruct(&shares);
-        assert_eq!(secret, reconstructed);
+/// Create 3-party boolean secret shares 
+pub fn create_boolean_shares(value: u64, id: u64, byte_length: usize) -> Result<(SecretShare, SecretShare, SecretShare), Error> {
+    if byte_length == 0 {
+        return Err(anyhow!("Byte length must be greater than 0"));
     }
+    
+    let value_bytes = value_to_bytes(value, byte_length);
+    let mut rng = rand::rng();
+    
+    // Generate two random shares
+    let share1_bytes: Vec<u8> = (0..byte_length).map(|_| rng.random()).collect();
+    let share2_bytes: Vec<u8> = (0..byte_length).map(|_| rng.random()).collect();
+    
+    // Third share is computed to satisfy: share1 ⊕ share2 ⊕ share3 = value
+    let share3_bytes: Vec<u8> = value_bytes
+        .iter()
+        .zip(&share1_bytes)
+        .zip(&share2_bytes)
+        .map(|((&v, &s1), &s2)| v ^ s1 ^ s2)
+        .collect();
+    
+    let share1 = SecretShare::new(id, share1_bytes, SecretShareType::Boolean, 1);
+    let share2 = SecretShare::new(id, share2_bytes, SecretShareType::Boolean, 2);
+    let share3 = SecretShare::new(id, share3_bytes, SecretShareType::Boolean, 3);
+    
+    Ok((share1, share2, share3))
+}
 
-    #[test]
-    fn test_local_xor() {
-        let secret1 = vec![42u8];
-        let secret2 = vec![100u8];
-        let shares1 = SecretShare::share_secret(&secret1);
-        let shares2 = SecretShare::share_secret(&secret2);
-
-        let result = shares1[0].local_xor(&shares2[0]).unwrap();
-        // Test that XOR operation works correctly
+pub fn reconstruct_boolean_value(share1: &SecretShare, share2: &SecretShare, share3: &SecretShare) -> Result<u64, Error> {
+    // Validate all shares are compatible
+    validate_shares_compatible(share1, share2)?;
+    validate_shares_compatible(share2, share3)?;
+    
+    if share1.share_type != SecretShareType::Boolean {
+        return Err(anyhow!("All shares must be Boolean type"));
     }
-
-    #[test]
-    fn test_relational_operations() {
-        let data = vec![
-            SecretShare::Boolean {
-                share1: vec![1],
-                share2: vec![0],
-                party_id: 0,
-            },
-            SecretShare::Boolean {
-                share1: vec![2],
-                share2: vec![0],
-                party_id: 0,
-            },
-        ];
-
-        let count = RelationalMPC::count(&data);
-        assert_eq!(count, 2);
-    }
+    
+    // XOR all three shares to get original value
+    let reconstructed_bytes: Vec<u8> = share1.share
+        .iter()
+        .zip(&share2.share)
+        .zip(&share3.share)
+        .map(|((&s1, &s2), &s3)| s1 ^ s2 ^ s3)
+        .collect();
+    
+    Ok(bytes_to_value(&reconstructed_bytes))
 }

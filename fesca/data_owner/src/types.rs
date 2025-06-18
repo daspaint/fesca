@@ -44,13 +44,11 @@ pub enum Charset {
 pub enum ColumnType {
     Boolean,
     UnsignedInt { bit_width: usize },       // u8, u16, u32, u64, etc.
-    Float { bit_width: usize },             // f32 = 32 bits, f64 = 64 bits
+    Float { bit_width: usize },             // f32, f64
     String { max_chars: usize, charset: Charset }, // Encoded per-char
 }
 
 /// Describes the metadata for a single column in the shared table.
-/// The bit_width specifies how many bits are used to represent each value
-/// in the column.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDescriptor {
     pub name: String,

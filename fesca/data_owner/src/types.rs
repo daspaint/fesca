@@ -43,7 +43,7 @@ pub enum Charset {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ColumnType {
     Boolean,
-    UnsignedInt { bit_width: usize },       // u8, u16, u32, u64, etc.
+    UnsignedInt,       // Only u32 is supported
     Float { bit_width: usize },             // f32, f64
     String { max_chars: usize, charset: Charset }, // Encoded per-char
 }

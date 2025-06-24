@@ -4,6 +4,7 @@ use rand::Rng;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecretShareType {
     Boolean,
+    Arithmetic,
     SQL,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,7 +28,47 @@ pub fn check(share1: &SecretShare, share2: &SecretShare) -> bool{
     return true;
 }
 
-pub fn generate_shares_vec(secret_data: Vec<u8>, share_id: u64) -> (SecretShare, SecretShare, SecretShare) {
+pub fn generate_arithmetic_shares(secret_data: Vec<u8>, share_id: u64) -> (SecretShare, SecretShare, SecretShare) {
+    let mut rng = rand::thread_rng();
+    
+    let mut share1_data = Vec::with_capacity(secret_data.len());
+    let mut share2_data = Vec::with_capacity(secret_data.len());
+    let mut share3_data = Vec::with_capacity(secret_data.len());
+    
+    for &byte in &secret_data {
+        // Generate two random bytes
+        let x1 = rng.random::<u8>();
+        let x2 = rng.random::<u8>();
+        // Third share ensures secret = s1 + s2 + s3 (mod 256)
+        let s3 = byte.wrapping_sub(s1).wrapping_sub(s2);
+        
+        share1_data.push(s1);
+        share2_data.push(s2);
+        share3_data.push(s3);
+    }
+    
+    let p1 = SecretShare {
+        id: share_id,
+        share: share1_data,
+        share_type: SecretShareType::Arithmetic,
+    };
+    
+    let p2 = SecretShare {
+        id: share_id,
+        share: share2_data,
+        share_type: SecretShareType::Arithmetic,
+    };
+    
+    let p3 = SecretShare {
+        id: share_id,
+        share: share3_data,
+        share_type: SecretShareType::Arithmetic,
+    };
+    
+    (p1, p2, p3)
+}
+
+pub fn generate_boolean_shares(secret_data: Vec<u8>, share_id: u64) -> (SecretShare, SecretShare, SecretShare) {
     let mut rng = rand::rng();
     
     // Generate random shares for each byte in the vector
@@ -90,10 +131,6 @@ pub fn generate_shares_vec(secret_data: Vec<u8>, share_id: u64) -> (SecretShare,
         share_type: SecretShareType::Boolean,
     };
     
-    println!("share1: {:?}", p1);
-    println!("share2: {:?}", p2);
-    println!("share3: {:?}", p3);
-    
     (p1, p2, p3)
 }
 
@@ -115,6 +152,30 @@ pub fn reconstruct_boolean_shares(share1: &SecretShare, share2: &SecretShare, sh
         let x3 = share3.share[i];
         
         let secret_byte = x1 ^ x2 ^ x3;
+        reconstructed.push(secret_byte);
+    }
+    
+    Ok(reconstructed)
+}
+
+pub fn reconstruct_arithmetic_shares(share1: &SecretShare, share2: &SecretShare, share3: &SecretShare) -> Result<Vec<u8>, String> {
+    if !check(share1, share2) || !check(share2, share3) {
+        return Err("Shares are incompatible".to_string());
+    }
+    
+    if share1.share_type != SecretShareType::SQL {
+        return Err("Expected SQL (arithmetic) shares".to_string());
+    }
+    
+    let mut reconstructed = Vec::with_capacity(share1.share.len());
+    
+    for i in 0..share1.share.len() {
+        let s1 = share1.share[i];
+        let s2 = share2.share[i];
+        let s3 = share3.share[i];
+        
+        // Reconstruct using addition: secret = s1 + s2 + s3 (mod 256)
+        let secret_byte = s1.wrapping_add(s2).wrapping_add(s3);
         reconstructed.push(secret_byte);
     }
     

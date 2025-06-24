@@ -1,27 +1,13 @@
 use anyhow::{Error, anyhow};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SecretShareType {
-    Boolean,
-    SQL,
-}
-
-pub struct SecretShare {
-    pub id: u64,
-    pub share: Vec<u8>,
-    pub share_type: SecretShareType,
-}
+use super::SecretShare::{SecretShare,SecretShareType,check};
 
 /* Boolean Helper Operations */
 pub fn xor_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretShare, Error> {
-    if share1.share_type != share2.share_type {
-        return Err(anyhow!("Shares must be of the same type"));
-    }
-    if share1.share.len() != share2.share.len() {
-        return Err(anyhow!("Shares must be of the same length"));
-    }
-    if share1.id != share2.id {
-        return Err(anyhow!("Shares must be of the same ID"));
+    if check(share1, share2) {
+        return Err(anyhow!("Error shares are not consistent"));
+    } 
+    if share1.share_type!= SecretShareType::Boolean {
+        return Err(anyhow!("Shares are not Boolean"));
     }
     let xor_share: Vec<u8> = share1
         .share
@@ -35,3 +21,5 @@ pub fn xor_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretSh
         share_type: share1.share_type.clone(),
     })
 }
+
+

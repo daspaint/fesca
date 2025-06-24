@@ -7,28 +7,6 @@ pub enum SecretShareType {
     SQL,
 }
 
-#[derive(Debug, Clone)]
-pub struct SecretShare {
-    pub id: u64,
-    pub share: Vec<u8>,
-    pub share_type: SecretShareType,
-    pub party_id: u8, 
-}
-
-/* Helper */
-pub fn validate_shares_compatible(share1: &SecretShare, share2: &SecretShare)->Result<(), anyhow::Error>{
-    if share1.share_type != share2.share_type {
-        return Err(anyhow!("Shares must be of the same type"));
-    }
-    if share1.share.len() != share2.share.len() {
-        return Err(anyhow!("Shares must be of the same length"));
-    }
-    if share1.id != share2.id {
-        return Err(anyhow!("Shares must be of the same ID"));
-    }
-    return Ok(())
-}
-
 /* Boolean Helper Operations */
 pub fn xor_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretShare, Error> {
     validate_shares_compatible(share1, share2)?;
@@ -39,7 +17,11 @@ pub fn xor_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretSh
         .zip(&share2.share)
         .map(|(a, b)| a ^ b)
         .collect();
-    
+    Ok(SecretShare {
+        id: share1.id.clone(),
+        share: xor_share,
+        share_type: share1.share_type.clone(),
+    })    
     Ok(SecretShare {
         id: share1.id,
         share: xor_share,

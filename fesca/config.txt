@@ -1,1 +1,2 @@
-role:client
+role:data_owner
+data_path:data/airtravel.csv

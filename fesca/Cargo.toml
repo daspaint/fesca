@@ -9,16 +9,17 @@ readme = "README.md"
 [workspace]
 resolver = "3"
 members = [
-    "analyst",
-    "client",
-    "cloud",
-    "helpers",
+    "data_analyst",
+    "data_owner",
+    "computing_node",
+    "helpers"
 ]
 
 [dependencies]
-analyst = { version = "0.1.0", path = "analyst" }
-client = { version = "0.1.0", path = "client" }
-cloud = { version = "0.1.0", path = "cloud" }
+data_analyst = { version = "0.1.0", path = "data_analyst" }
+data_owner = { version = "0.1.0", path = "data_owner" }
+computing_node = { version = "0.1.0", path = "computing_node" }
 helpers = { version = "0.1.0", path = "helpers" }
 rand = "0.9.1"
 serde = "1.0.219"
+anyhow = "1.0.98"

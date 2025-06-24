@@ -9,17 +9,4 @@ pub fn xor_shares(share1: &SecretShare, share2: &SecretShare) -> Result<SecretSh
     if share1.share_type!= SecretShareType::Boolean {
         return Err(anyhow!("Shares are not Boolean"));
     }
-    let xor_share: Vec<u8> = share1
-        .share
-        .iter()
-        .zip(&share2.share)
-        .map(|(a, b)| a ^ b)
-        .collect();
-    Ok(SecretShare {
-        id: share1.id.clone(),
-        share: xor_share,
-        share_type: share1.share_type.clone(),
-    })
 }
-
-

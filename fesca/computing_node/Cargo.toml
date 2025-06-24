@@ -1,4 +1,4 @@
 [package]
-name = "cloud"
+name = "computing_node"
 version = "0.1.0"
 edition = "2024"

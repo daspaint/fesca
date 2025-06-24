@@ -11,9 +11,9 @@ Meeting each Friday at 16:00
 - `/docs/preparation` - extra preparation material
 - `/docs/Secrecy` - working project of Secrecy test
 - `/fesca` - main project
-- `/fesca/client` - main project from side of client
-- `/fesca/cloud` - main project from side of cloud
-- `/fesca/analyst` - main project from side of data analyst
+- `/fesca/data_owner` - main project for data owner
+- `/fesca/computing_node` - main project for computing nodes
+- `/fesca/data_analyst` - main project for data analyst
 
 
 
@@ -32,9 +32,8 @@ Meeting each Friday at 16:00
 - [Oblivious Query Execution](https://github.com/CASP-Systems-BU/Secrecy/tree/main)
 - [Conversion of some traditional database operators and basic logic gates](https://www.usenix.org/system/files/nsdi23-liagouris.pdf)
 - Micro-benchmark of the framework on some real-world datasets (e.g., Hospital, Financial Organization)
-
 ## Special preparation
-- [Execution of XOR, AND gate protocol](./docs/)
+- [Execution of XOR, AND gate protocol] (./docs/)
 
 # Goals
 

@@ -11,7 +11,7 @@ pub trait ReplicatedShareable {
 }
 
 /// Helper function to share a bit string using XOR-based replicated sharing
-fn share_bit_string(bits: &[bool], rng: &mut impl Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
+pub fn share_bit_string(bits: &[bool], rng: &mut impl Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
     let mut shares = (Vec::new(), Vec::new(), Vec::new());
     
     for &bit in bits {
@@ -28,13 +28,39 @@ fn share_bit_string(bits: &[bool], rng: &mut impl Rng) -> (SharedBitString, Shar
     )
 }
 
+/// Helper function to share a string using the provided charset and max_chars for encoding
+pub fn share_string_with_encoding(s: &str, charset: &Charset, max_chars: usize, rng: &mut impl rand::Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
+    let mut bits = Vec::new();
+    let chars: Vec<char> = s.chars().collect();
+    for i in 0..max_chars {
+        let c = chars.get(i).copied().unwrap_or('\0');
+        let char_bits: Vec<bool> = match charset {
+            Charset::Ascii => {
+                let b = c as u32 & 0x7F;
+                (0..7).map(|i| (b >> i) & 1 == 1).collect()
+            }
+            Charset::Utf8 => {
+                // Use 8 bits per char (truncate if >255)
+                let b = c as u32 & 0xFF;
+                (0..8).map(|i| (b >> i) & 1 == 1).collect()
+            }
+            Charset::Custom { bits_per_char } => {
+                let b = c as u32;
+                (0..*bits_per_char).map(|i| (b >> i) & 1 == 1).collect()
+            }
+        };
+        bits.extend(char_bits);
+    }
+    share_bit_string(&bits, rng)
+}
+
 // Implementation for boolean values
 impl ReplicatedShareable for bool {
     type Share = BitShare;
 
     fn replicate(&self, rng: &mut impl Rng) -> (BitShare, BitShare, BitShare) {
-        let a = rng.gen();
-        let b = rng.gen();
+        let a = rng.random();
+        let b = rng.random();
         let c = *self ^ a ^ b;
         (
             BitShare { share_a: a, share_b: b },
@@ -77,33 +103,7 @@ impl ReplicatedShareable for f64 {
 impl ReplicatedShareable for String {
     type Share = SharedBitString;
 
-    /// Replicate a string using the provided charset and max_chars for encoding
-    fn replicate_with_encoding(&self, charset: &Charset, max_chars: usize, rng: &mut impl rand::Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
-        let mut bits = Vec::new();
-        let chars: Vec<char> = self.chars().collect();
-        for i in 0..max_chars {
-            let c = chars.get(i).copied().unwrap_or('\0');
-            let char_bits: Vec<bool> = match charset {
-                Charset::Ascii => {
-                    let b = c as u32 & 0x7F;
-                    (0..7).map(|i| (b >> i) & 1 == 1).collect()
-                }
-                Charset::Utf8 => {
-                    // Use 8 bits per char (truncate if >255)
-                    let b = c as u32 & 0xFF;
-                    (0..8).map(|i| (b >> i) & 1 == 1).collect()
-                }
-                Charset::Custom { bits_per_char } => {
-                    let b = c as u32;
-                    (0..*bits_per_char).map(|i| (b >> i) & 1 == 1).collect()
-                }
-            };
-            bits.extend(char_bits);
-        }
-        share_bit_string(&bits, rng)
-    }
-
     fn replicate(&self, _rng: &mut impl rand::Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
-        panic!("Use replicate_with_encoding for String, which requires charset and max_chars");
+        panic!("Use explicit encoding and sharing for String; replicate_with_encoding is not part of the trait");
     }
 } 

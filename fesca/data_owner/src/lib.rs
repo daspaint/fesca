@@ -1,4 +1,10 @@
 pub mod types;
+pub mod load;
+pub mod encode;
+pub mod sharing;
+
+#[cfg(test)]
+mod tests;
 
 use std::error::Error;
 use std::fs::File;

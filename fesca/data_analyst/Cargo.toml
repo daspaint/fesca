@@ -8,4 +8,4 @@ sqlparser   = "0.25"
 log         = "0.4"
 env_logger  = "0.11"
 dotenv      = "0.15"
-anyhow      = "1.0"s
+anyhow      = "1.0"

@@ -1,0 +1,10 @@
+{
+    "table_name": "region",
+    "table_id": 5,
+    "row_count": 5,
+    "columns": [
+      { "name": "region_key", "type_hint": "UnsignedInt" },
+      { "name": "name",       "type_hint": { "String": { "max_chars": 16, "charset": "Ascii" } } },
+      { "name": "comment",    "type_hint": { "String": { "max_chars": 128, "charset": "Ascii" } } }
+    ]
+  }

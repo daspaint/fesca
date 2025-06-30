@@ -6,12 +6,17 @@ use std::{env, process};
 
 use helpers::read_config::read_config;
 use data_owner::read_csv_data;
-use computing_node::run as run_compute;
+// use computing_node::run as run_compute; TODO: uncomment when computing_node module is ready
 use data_analyst::run as run_analyst;
 
-fn main() {
+fn main() -> Result<()>{
+
+    // Initialize environment variables and logging
+    dotenv().ok();
+    env_logger::init();
+
     let role = read_config("config.txt", "role").unwrap_or_else(|| "data_analyst".to_string());
-    println!("FESCA is here with role: {}", role);
+    info!("FESCA is here with role: {}", role);
 
     match role.as_str() {
         "data_owner" => {
@@ -31,7 +36,9 @@ fn main() {
         }
         "computing_node" => {
             info!("Running as Compute Node");
-            run_compute()?;
+            // TODO: implement computing_node::run() and uncomment:
+            // computing_node::run()?;
+            unimplemented!("computing_node not implemented yet");
         }
         "data_analyst" => {
             info!("Running as Data Analyst");
@@ -45,4 +52,6 @@ fn main() {
             process::exit(1);
         }
     }
+
+    Ok(())
 }

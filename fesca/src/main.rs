@@ -13,7 +13,8 @@ fn main() -> Result<()>{
 
     // Initialize environment variables and logging
     dotenv().ok();
-    env_logger::init();
+    use env_logger::Env;
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let role = read_config("config.txt", "role").unwrap_or_else(|| "data_analyst".to_string());
     info!("FESCA is here with role: {}", role);

@@ -1,2 +1,2 @@
-role:data_owner
+role:data_analyst
 data_path:data/airtravel.csv

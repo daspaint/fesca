@@ -2,15 +2,14 @@ use anyhow::Result;
 use dotenv::dotenv;
 use env_logger;
 use log::{error, info};
-use std::{env, process};
+use std::process;
 
-use helpers::read_config::read_config;
 use data_owner::read_csv_data;
+use helpers::read_config::read_config;
 // use computing_node::run as run_compute; TODO: uncomment when computing_node module is ready
 use data_analyst::run as run_analyst;
 
-fn main() -> Result<()>{
-
+fn main() -> Result<()> {
     // Initialize environment variables and logging
     dotenv().ok();
     use env_logger::Env;
@@ -29,7 +28,7 @@ fn main() -> Result<()>{
                     std::process::exit(1);
                 }
             };
-            
+
             if let Err(e) = read_csv_data(&data_path) {
                 error!("Error reading CSV data from {}: {}", data_path, e);
                 std::process::exit(1);
@@ -43,7 +42,7 @@ fn main() -> Result<()>{
         }
         "data_analyst" => {
             info!("Running as Data Analyst");
-            run_analyst()?; 
+            run_analyst()?;
         }
         invalid => {
             error!(

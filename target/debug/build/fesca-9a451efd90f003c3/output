@@ -1,2 +1,0 @@
-cargo:rerun-if-changed=proto/correlated_randomness.proto
-cargo:rerun-if-changed=proto

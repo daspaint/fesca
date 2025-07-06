@@ -1,0 +1,2 @@
+role:computing_node
+data_path:data/airtravel.csv

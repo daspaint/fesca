@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package correlated_randomness;
+
+// Service für die Kommunikation zwischen den drei Parteien
+service CorrelatedRandomnessService {
+  // P1 sendet ρ₁ an P2
+  rpc SendRho1(RhoMessage) returns (AckMessage);
+  
+  // P2 sendet ρ₂ an P3  
+  rpc SendRho2(RhoMessage) returns (AckMessage);
+  
+  // P3 sendet ρ₃ an P1
+  rpc SendRho3(RhoMessage) returns (AckMessage);
+  
+  // Jede Partei sendet ihr berechnetes α/β/γ
+  rpc SendComputedValue(ComputedValueMessage) returns (AckMessage);
+  
+  // Verifikation: Prüfe ob α ⊕ β ⊕ γ = 0
+  rpc VerifyCorrelation(VerificationRequest) returns (VerificationResponse);
+}
+
+// Nachricht mit einem ρ-Wert
+message RhoMessage {
+  uint32 rho_value = 1;  // 0 oder 1
+  string sender_id = 2;  // "P1", "P2", oder "P3"
+}
+
+// Bestätigungsnachricht
+message AckMessage {
+  bool success = 1;
+  string message = 2;
+}
+
+// Nachricht mit berechnetem Wert (α, β, oder γ)
+message ComputedValueMessage {
+  uint32 computed_value = 1;  // α, β, oder γ
+  string party_id = 2;        // "P1", "P2", oder "P3"
+  uint32 rho_sent = 3;        // Das ρ, das diese Partei gewählt hat
+  uint32 rho_received = 4;    // Das ρ, das diese Partei empfangen hat
+}
+
+// Anfrage für Verifikation
+message VerificationRequest {
+  repeated ComputedValueMessage values = 1;  // Alle drei α, β, γ Werte
+}
+
+// Antwort der Verifikation
+message VerificationResponse {
+  bool is_valid = 1;  // true wenn α ⊕ β ⊕ γ = 0
+  string details = 2; // Details zur Verifikation
+} 

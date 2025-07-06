@@ -1,0 +1,1 @@
+{"rustc":15111467291198882907,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[895308502208181585,"build_script_build",false,18444744638655058048]],"local":[{"RerunIfChanged":{"output":"debug/build/fesca-9a451efd90f003c3/output","paths":["proto/correlated_randomness.proto","proto"]}}],"rustflags":[],"config":0,"compile_kind":0}

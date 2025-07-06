@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fesca-party1
+  namespace: fesca
+  labels:
+    app: fesca
+    party: party1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fesca
+      party: party1
+  template:
+    metadata:
+      labels:
+        app: fesca
+        party: party1
+    spec:
+      containers:
+      - name: fesca-party1
+        image: fesca:latest
+        imagePullPolicy: Never  # Für lokale Images
+        ports:
+        - containerPort: 50051
+          name: grpc
+        env:
+        - name: RUST_LOG
+          value: "info"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config.txt
+          subPath: config.txt
+      volumes:
+      - name: config-volume
+        configMap:
+          name: fesca-config 

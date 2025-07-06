@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fesca-client
+  namespace: fesca
+  labels:
+    app: fesca
+    component: client
+spec:
+  template:
+    metadata:
+      labels:
+        app: fesca
+        component: client
+    spec:
+      containers:
+      - name: fesca-client
+        image: fesca:latest
+        imagePullPolicy: Never
+        command: ["/app/fesca"]
+        args: ["client"]
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: PARTY1_HOST
+          value: "fesca-party1-service"
+        - name: PARTY2_HOST
+          value: "fesca-party2-service"
+        - name: PARTY3_HOST
+          value: "fesca-party3-service"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config.txt
+          subPath: config.txt
+      volumes:
+      - name: config-volume
+        configMap:
+          name: fesca-config
+      restartPolicy: Never
+  backoffLimit: 3 

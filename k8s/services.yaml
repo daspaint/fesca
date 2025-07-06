@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fesca-party1-service
+  namespace: fesca
+  labels:
+    app: fesca
+    party: party1
+spec:
+  selector:
+    app: fesca
+    party: party1
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fesca-party2-service
+  namespace: fesca
+  labels:
+    app: fesca
+    party: party2
+spec:
+  selector:
+    app: fesca
+    party: party2
+  ports:
+  - name: grpc
+    port: 50052
+    targetPort: 50052
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fesca-party3-service
+  namespace: fesca
+  labels:
+    app: fesca
+    party: party3
+spec:
+  selector:
+    app: fesca
+    party: party3
+  ports:
+  - name: grpc
+    port: 50053
+    targetPort: 50053
+  type: ClusterIP 

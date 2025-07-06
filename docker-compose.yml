@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Partei 1 (P1) - läuft auf Port 50051
+  party1:
+    build: .
+    container_name: fesca-party1
+    ports:
+      - "50051:50051"
+    environment:
+      - RUST_LOG=info
+    command: ["./fesca"]
+    networks:
+      - fesca-network
+
+  # Partei 2 (P2) - läuft auf Port 50052  
+  party2:
+    build: .
+    container_name: fesca-party2
+    ports:
+      - "50052:50052"
+    environment:
+      - RUST_LOG=info
+    command: ["./fesca"]
+    networks:
+      - fesca-network
+
+  # Partei 3 (P3) - läuft auf Port 50053
+  party3:
+    build: .
+    container_name: fesca-party3
+    ports:
+      - "50053:50053"
+    environment:
+      - RUST_LOG=info
+    command: ["./fesca"]
+    networks:
+      - fesca-network
+
+  # Client für Tests
+  client:
+    build: .
+    container_name: fesca-client
+    depends_on:
+      - party1
+      - party2
+      - party3
+    environment:
+      - RUST_LOG=info
+    command: ["./fesca"]
+    networks:
+      - fesca-network
+
+networks:
+  fesca-network:
+    driver: bridge 

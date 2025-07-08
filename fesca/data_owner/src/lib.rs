@@ -10,7 +10,6 @@ use std::error::Error;
 use std::fs::File;
 use std::path::Path;
 use anyhow::Result;
-use rand::rng;
 use rand::Rng;
 
 use crate::load::load_csv_and_schema_from_config;
@@ -33,7 +32,7 @@ pub fn run_data_owner() -> Result<()> {
     };
 
     // Encode and share
-    let mut rng = rng();
+    let mut rng = rand::thread_rng();
     let mut party0_rows = Vec::new();
     let mut party1_rows = Vec::new();
     let mut party2_rows = Vec::new();

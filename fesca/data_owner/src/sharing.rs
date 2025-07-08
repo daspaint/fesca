@@ -59,8 +59,8 @@ impl ReplicatedShareable for bool {
     type Share = BitShare;
 
     fn replicate(&self, rng: &mut impl Rng) -> (BitShare, BitShare, BitShare) {
-        let a = rng.random();
-        let b = rng.random();
+        let a = rng.gen_bool(0.5);
+        let b = rng.gen_bool(0.5);
         let c = *self ^ a ^ b;
         (
             BitShare { share_a: a, share_b: b },

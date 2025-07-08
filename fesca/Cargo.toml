@@ -23,3 +23,6 @@ helpers = { version = "0.1.0", path = "helpers" }
 rand = "0.9.1"
 serde = "1.0.219"
 anyhow = "1.0.98"
+dotenv = "0.15"
+env_logger = "0.11"
+log = "0.4"

@@ -4,7 +4,7 @@ use env_logger;
 use log::{error, info};
 use std::process;
 
-use data_owner::read_csv_data;
+use data_owner::run_data_owner;
 use helpers::read_config::read_config;
 // use computing_node::run as run_compute; TODO: uncomment when computing_node module is ready
 use data_analyst::run as run_analyst;
@@ -21,16 +21,8 @@ fn main() -> Result<()> {
     match role.as_str() {
         "data_owner" => {
             info!("Running as Data Owner");
-            let data_path = match read_config("config.txt", "data_path") {
-                Some(path) => path,
-                None => {
-                    error!("Error: 'data_path' must be specified in config.txt");
-                    std::process::exit(1);
-                }
-            };
-
-            if let Err(e) = read_csv_data(&data_path) {
-                error!("Error reading CSV data from {}: {}", data_path, e);
+            if let Err(e) = run_data_owner() {
+                error!("Error running data owner: {}", e);
                 std::process::exit(1);
             }
         }

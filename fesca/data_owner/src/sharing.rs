@@ -70,40 +70,6 @@ impl ReplicatedShareable for bool {
     }
 }
 
-// Implementation for unsigned integers
-impl ReplicatedShareable for u32 {
-    type Share = SharedBitString;
-
-    fn replicate(&self, rng: &mut impl Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
-        // Convert u32 to bit string (32 bits)
-        let bits: Vec<bool> = (0..32)
-            .map(|i| (self >> i) & 1 == 1)
-            .collect();
-        
-        share_bit_string(&bits, rng)
-    }
-}
-
-// Implementation for floating-point numbers
-impl ReplicatedShareable for f64 {
-    type Share = SharedBitString;
-
-    fn replicate(&self, rng: &mut impl Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
-        // Convert f64 to bit string (64 bits)
-        let bits: Vec<bool> = self.to_bits()
-            .to_le_bytes()
-            .iter()
-            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1 == 1))
-            .collect();
-        
-        share_bit_string(&bits, rng)
-    }
-}
-
-impl ReplicatedShareable for String {
-    type Share = SharedBitString;
-
-    fn replicate(&self, _rng: &mut impl rand::Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
-        panic!("Use explicit encoding and sharing for String; replicate_with_encoding is not part of the trait");
-    }
-} 
+// Note: Complex types like u32, f64, and String should be encoded to bitstrings 
+// using encode.rs first, then shared using share_bit_string() function.
+// The sharing module only handles the primitive types: bool and Vec<bool> (bitstrings). 

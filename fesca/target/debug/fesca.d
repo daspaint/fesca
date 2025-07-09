@@ -1,1 +1,0 @@
-/home/alisher/Desktop/fesca/fesca/target/debug/fesca: /home/alisher/Desktop/fesca/fesca/analyst/src/lib.rs /home/alisher/Desktop/fesca/fesca/client/src/lib.rs /home/alisher/Desktop/fesca/fesca/cloud/src/lib.rs /home/alisher/Desktop/fesca/fesca/helpers/src/lib.rs /home/alisher/Desktop/fesca/fesca/helpers/src/read_config.rs /home/alisher/Desktop/fesca/fesca/src/main.rs

@@ -7,7 +7,7 @@ use std::process;
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
     info!("Data Analyst: starting query processing");
-
+                
     // Example SQL; replace with CLI arg later
     let sql_text = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D';";
 

@@ -47,12 +47,12 @@ impl ShareService for ShareServiceImpl {
         println!("Rows received: {}", party_data.rows.len());
 
         // Create storage path based on table name and data owner (using home directory)
+        // No party subdirectory needed since each node only receives one party's shares
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-        let storage_path = format!("{}/fesca_shares/{}/{}/party_{}", 
+        let storage_path = format!("{}/fesca_shares/{}/{}", 
                                   home_dir,
                                   data_owner.owner_id, 
-                                  schema.table_name, 
-                                  party_data.party_id);
+                                  schema.table_name);
 
         // Create directory if it doesn't exist
         if let Err(e) = fs::create_dir_all(&storage_path) {

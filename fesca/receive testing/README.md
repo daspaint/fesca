@@ -16,19 +16,12 @@ The receive testing server simulates computing nodes that receive secret shares 
 ~/fesca_shares/
 ├── {data_owner_id}/
 │   └── {table_name}/
-│       ├── party_0/
-│       │   ├── schema_YYYYMMDD_HHMMSS.json      # Complete table schema
-│       │   ├── party_data_YYYYMMDD_HHMMSS.json  # Complete SharedPartyData with all bit shares
-│       │   └── metadata_YYYYMMDD_HHMMSS.json    # Metadata and file references
-│       ├── party_1/
-│       │   ├── schema_YYYYMMDD_HHMMSS.json
-│       │   ├── party_data_YYYYMMDD_HHMMSS.json
-│       │   └── metadata_YYYYMMDD_HHMMSS.json
-│       └── party_2/
-│           ├── schema_YYYYMMDD_HHMMSS.json
-│           ├── party_data_YYYYMMDD_HHMMSS.json
-│           └── metadata_YYYYMMDD_HHMMSS.json
+│       ├── schema_YYYYMMDD_HHMMSS.json      # Complete table schema
+│       ├── party_data_YYYYMMDD_HHMMSS.json  # Complete SharedPartyData with all bit shares
+│       └── metadata_YYYYMMDD_HHMMSS.json    # Metadata and file references
 ```
+
+**Note**: Each computing node only stores shares for one party, so no party subdirectories are needed.
 
 ## Usage
 
@@ -109,9 +102,9 @@ Data is stored in three separate files per party:
   },
   "storage_metadata": {
     "stored_at": "2024-01-01T12:00:00Z",
-    "schema_file": "~/fesca_shares/owner_001/partsupp/party_0/schema_20240101_120000.json",
-    "party_data_file": "~/fesca_shares/owner_001/partsupp/party_0/party_data_20240101_120000.json",
-    "storage_path": "~/fesca_shares/owner_001/partsupp/party_0"
+    "schema_file": "~/fesca_shares/owner_001/partsupp/schema_20240101_120000.json",
+    "party_data_file": "~/fesca_shares/owner_001/partsupp/party_data_20240101_120000.json",
+    "storage_path": "~/fesca_shares/owner_001/partsupp"
   }
 }
 ```

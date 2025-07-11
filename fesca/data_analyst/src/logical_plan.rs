@@ -1,24 +1,22 @@
 /*
 Builds logical plan from SQL AST for SELECT avg(X) FROM Y WHERE Z; (right now only this query)
  */
-use sqlparser::ast::{Expr, Statement};
+use sqlparser::ast::{Expr, Statement}; 
 
 /*
 List of "available" logical operations in the plan.
  */
 pub enum LogicalOp {
     Scan { table: String },
-
     Filter { predicate: Expr, input: Box<LogicalOp> },
-
     Aggregate {
-        aggs: Vec<Expr>, // e.g. AVG(salary)
+        aggs: Vec<Expr>, 
         input: Box<LogicalOp>,
     },
 }
 
 /*
-Function to dynamically build a logical plan from a SQL AST statement.
+Function to dynamically build a LogicalOp-tree from a SQL AST statement (Statement::Query).
 Currently supports only simple SELECT statements with aggregation and filtering.
  */
 pub fn build_logical_plan(stmt: &Statement) -> LogicalOp {
@@ -47,5 +45,5 @@ pub fn build_logical_plan(stmt: &Statement) -> LogicalOp {
             return plan;
         }
     }
-    panic!("Unsupported AST for logical planner");
+    panic!("Unsupported AST for logical planner, not a SELECT");
 }

@@ -1,12 +1,15 @@
+/*
+Parses SQL statement into Abstract Syntax Tree (AST), also handles invalid SQL
+ */
 use log::{info, warn};
 use sqlparser::ast::Statement;
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::{Parser, ParserError};
 
-// Parse SQL into AST, also handles invalid SQL
 pub fn parse_sql(sql: &str) -> Result<Vec<Statement>, ParserError> {
     let dialect = GenericDialect {};
     Parser::parse_sql(&dialect, sql)
+    log::info!("Parsed SQL: {}", sql);
 }
 
 // #[cfg(test)]

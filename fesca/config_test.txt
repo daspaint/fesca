@@ -1,0 +1,5 @@
+data_path: data/region.csv
+table_name: region
+table_id: 1
+columns: year,passengers
+column_types: UnsignedInt,UnsignedInt 

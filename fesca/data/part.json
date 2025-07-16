@@ -1,0 +1,16 @@
+{
+    "table_name": "part",
+    "table_id": 3,
+    "row_count": 40000,
+    "columns": [
+      { "name": "part_key",         "type_hint": "UnsignedInt" },
+      { "name": "name",             "type_hint": { "String": { "max_chars": 48, "charset": "Ascii" } } },
+      { "name": "manufacturer",     "type_hint": { "String": { "max_chars": 15, "charset": "Ascii" } } },
+      { "name": "brand",            "type_hint": { "String": { "max_chars": 8,  "charset": "Ascii" } } },
+      { "name": "type",             "type_hint": { "String": { "max_chars": 24, "charset": "Ascii" } } },
+      { "name": "size",             "type_hint": "UnsignedInt" },
+      { "name": "container",        "type_hint": { "String": { "max_chars": 10, "charset": "Ascii" } } },
+      { "name": "retail_price",     "type_hint": "UnsignedInt" },
+      { "name": "comment",          "type_hint": { "String": { "max_chars": 32, "charset": "Ascii" } } }
+    ]
+  }

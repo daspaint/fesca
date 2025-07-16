@@ -1,0 +1,16 @@
+{
+    "table_name": "orders",
+    "table_id": 2,
+    "row_count": 30000,
+    "columns": [
+      { "name": "order_key",     "type_hint": "UnsignedInt" },
+      { "name": "customer_key",  "type_hint": "UnsignedInt" },
+      { "name": "order_status",  "type_hint": { "String": { "max_chars": 1,  "charset": "Ascii" } } },
+      { "name": "total_price",   "type_hint": { "Float": { "bit_width": 64 } } },
+      { "name": "order_date",    "type_hint": { "String": { "max_chars": 8,  "charset": "Ascii" } } },
+      { "name": "order_priority", "type_hint": { "String": { "max_chars": 6,  "charset": "Ascii" } } },
+      { "name": "clerk",         "type_hint": { "String": { "max_chars": 17, "charset": "Ascii" } } },
+      { "name": "ship_priority", "type_hint": "UnsignedInt" },
+      { "name": "comment",       "type_hint": { "String": { "max_chars": 64, "charset": "Ascii" } } }
+    ]
+  }

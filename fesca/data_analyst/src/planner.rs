@@ -1,3 +1,7 @@
+/*
+This is a recursive function that builds a PhysicalOp tree from a LogicalOp tree.
+(logical -> physical)
+ */
 use crate::logical_plan::LogicalOp;
 use crate::physical_plan::PhysicalOp;
 

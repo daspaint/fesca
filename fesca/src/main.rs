@@ -6,11 +6,12 @@ Example usage:
  */
 use clap::{Parser, ValueEnum};
 use log::{error, info};
-use std::error::Error;
-use std::process;
+use std::{error::Error, process};
 
-use data_owner::run_data_owner;
-use data_analyst::run as run_analyst;
+use data_owner::run as run_data_owner;
+use data_analyst::run as run_data_analyst;
+// TODO: when ready, uncomment this line and implement computing_node::run()
+// use computing_node::run as run_computing_node;
 
 #[derive(Clone, ValueEnum, Debug)]
 #[clap(rename_all = "snake_case")]
@@ -21,7 +22,7 @@ enum Role {
 }
 
 // CLI arguments
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 struct Cli {
     #[arg(value_enum)]
     role: Role,
@@ -38,14 +39,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         Role::DataOwner => {
             info!("Running as Data Owner...");
             if let Err(e) = run_data_owner() {
-                error!("Error running data owner: {}", e);
+                error!("Error running as data owner: {}", e);
                 process::exit(1);
             }
         }
         Role::DataAnalyst => {
             info!("Running as Data Analyst...");
             if let Err(e) = run_data_analyst() {
-                error!("Error running data analyst: {}", e);
+                error!("Error running as data analyst: {}", e);
                 process::exit(1);
             }
         }

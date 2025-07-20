@@ -4,9 +4,10 @@ This file sets up the command-line interface and starts the appropriate role bas
 Example usage:
     cargo run -- --role DataOwner
  */
-use clap::{Parser, ValueEnum};
-use log::{error, info};
 use std::{error::Error, process};
+use clap::{Parser, ValueEnum};
+use env_logger::{Builder, Env};
+use log::{error, info, LevelFilter};
 
 use data_owner::run_data_owner as run_data_owner;
 use data_analyst::run as run_data_analyst;

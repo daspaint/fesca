@@ -8,7 +8,7 @@ use clap::{Parser, ValueEnum};
 use log::{error, info};
 use std::{error::Error, process};
 
-use data_owner::run as run_data_owner;
+use data_owner::run_data_owner as run_data_owner;
 use data_analyst::run as run_data_analyst;
 // TODO: when ready, uncomment this line and implement computing_node::run()
 // use computing_node::run as run_computing_node;

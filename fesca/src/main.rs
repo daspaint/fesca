@@ -29,7 +29,7 @@ struct Cli {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
+    Builder::from_env(Env::default().filter_or("RUST_LOG", "info")).format_timestamp(None).init();
 
     info!("Starting FESCA framework...");
 

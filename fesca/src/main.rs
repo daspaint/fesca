@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // All other errors (invalid flag, --help, etc.)
         Err(e) => e.exit(),
-
+    };
     match args.role {
         Role::DataOwner => {
             info!("Running as Data Owner...");

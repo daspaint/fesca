@@ -5,7 +5,7 @@ Example usage:
     cargo run -- --role DataOwner
  */
 use std::{error::Error, process};
-use clap::{Parser, ValueEnum};
+use clap::{Parser, ValueEnum, error::ErrorKind};
 use env_logger::{Builder, Env};
 use log::{error, info, LevelFilter};
 
@@ -34,7 +34,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     info!("Starting FESCA framework...");
 
-    let args = Cli::parse();
+    let args = match Cli::try_parse() {
+        Ok(a) => a,
+
+        Err(e) if e.kind() == ErrorKind::MissingRequiredArgument => {
+            eprintln!(
+                "Error: no role specified.\n\
+                 Please run with one of: data_owner, data_analyst, computing_node\n\n\
+                 Example:\n  cargo run -- data_analyst"
+            );
+            process::exit(1);
+        }
+
+        // All other errors (invalid flag, --help, etc.)
+        Err(e) => e.exit(),
 
     match args.role {
         Role::DataOwner => {

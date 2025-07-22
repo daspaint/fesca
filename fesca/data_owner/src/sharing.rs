@@ -1,75 +1,63 @@
 use rand::Rng;
-use crate::types::{BitShare, SharedBitString, Charset};
+use crate::types::BitVector;
 
-/// Trait for values that can be secret shared using replicated secret sharing
-pub trait ReplicatedShareable {
-    type Share;
-
-    /// Generates three shares of the value using replicated secret sharing
-    /// Returns a tuple of (share0, share1, share2) where each party gets two shares
-    fn replicate(&self, rng: &mut impl Rng) -> (Self::Share, Self::Share, Self::Share);
-}
-
-/// Helper function to share a bit string using XOR-based replicated sharing
-pub fn share_bit_string(bits: &[bool], rng: &mut impl Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
-    let mut shares = (Vec::new(), Vec::new(), Vec::new());
+/// Share a BitVector using 3-party replicated secret sharing and convert to bytes.
+/// Returns three tuples, each containing (share_a_bytes, share_b_bytes) for each party.
+pub fn share_bit_vector(bits: &BitVector, rng: &mut impl Rng) -> ((Vec<u8>, Vec<u8>), (Vec<u8>, Vec<u8>), (Vec<u8>, Vec<u8>)) {
+    let mut a_bits = BitVector::new();
+    let mut b_bits = BitVector::new();
+    let mut c_bits = BitVector::new();
     
-    for &bit in bits {
-        let (s1, s2, s3) = bool::replicate(&bit, rng);
-        shares.0.push(s1);
-        shares.1.push(s2);
-        shares.2.push(s3);
+    // Generate random shares for each bit
+    for bit in bits.iter() {
+        let a = rng.gen_bool(0.5);
+        let b = rng.gen_bool(0.5);
+        let c = *bit ^ a ^ b;  // Ensure XOR reconstruction works
+        
+        a_bits.push(a);
+        b_bits.push(b);
+        c_bits.push(c);
     }
     
+    // Convert bit vectors to bytes directly
+    let mut a_bytes = Vec::new();
+    for chunk in a_bits.chunks(8) {
+        let mut byte = 0u8;
+        for (i, bit) in chunk.iter().enumerate() {
+            if *bit {
+                byte |= 1 << i;
+            }
+        }
+        a_bytes.push(byte);
+    }
+    
+    let mut b_bytes = Vec::new();
+    for chunk in b_bits.chunks(8) {
+        let mut byte = 0u8;
+        for (i, bit) in chunk.iter().enumerate() {
+            if *bit {
+                byte |= 1 << i;
+            }
+        }
+        b_bytes.push(byte);
+    }
+    
+    let mut c_bytes = Vec::new();
+    for chunk in c_bits.chunks(8) {
+        let mut byte = 0u8;
+        for (i, bit) in chunk.iter().enumerate() {
+            if *bit {
+                byte |= 1 << i;
+            }
+        }
+        c_bytes.push(byte);
+    }
+    
+    // Return bytes for each party: (share_a, share_b)
     (
-        SharedBitString { bits: shares.0 },
-        SharedBitString { bits: shares.1 },
-        SharedBitString { bits: shares.2 }
+        (a_bytes.clone(), b_bytes.clone()),    // Party 0: shares a and b
+        (b_bytes.clone(), c_bytes.clone()),    // Party 1: shares b and c  
+        (a_bytes, c_bytes),                    // Party 2: shares a and c
     )
 }
 
-/// Helper function to share a string using the provided charset and max_chars for encoding
-pub fn share_string_with_encoding(s: &str, charset: &Charset, max_chars: usize, rng: &mut impl rand::Rng) -> (SharedBitString, SharedBitString, SharedBitString) {
-    let mut bits = Vec::new();
-    let chars: Vec<char> = s.chars().collect();
-    for i in 0..max_chars {
-        let c = chars.get(i).copied().unwrap_or('\0');
-        let char_bits: Vec<bool> = match charset {
-            Charset::Ascii => {
-                let b = c as u32 & 0x7F;
-                (0..7).map(|i| (b >> i) & 1 == 1).collect()
-            }
-            Charset::Utf8 => {
-                // Use 8 bits per char (truncate if >255)
-                let b = c as u32 & 0xFF;
-                (0..8).map(|i| (b >> i) & 1 == 1).collect()
-            }
-            Charset::Custom { bits_per_char } => {
-                let b = c as u32;
-                (0..*bits_per_char).map(|i| (b >> i) & 1 == 1).collect()
-            }
-        };
-        bits.extend(char_bits);
-    }
-    share_bit_string(&bits, rng)
-}
-
-// Implementation for boolean values
-impl ReplicatedShareable for bool {
-    type Share = BitShare;
-
-    fn replicate(&self, rng: &mut impl Rng) -> (BitShare, BitShare, BitShare) {
-        let a = rng.gen_bool(0.5);
-        let b = rng.gen_bool(0.5);
-        let c = *self ^ a ^ b;
-        (
-            BitShare { share_a: a, share_b: b },
-            BitShare { share_a: b, share_b: c },
-            BitShare { share_a: c, share_b: a },
-        )
-    }
-}
-
-// Note: Complex types like u32, f64, and String should be encoded to bitstrings 
-// using encode.rs first, then shared using share_bit_string() function.
-// The sharing module only handles the primitive types: bool and Vec<bool> (bitstrings). 

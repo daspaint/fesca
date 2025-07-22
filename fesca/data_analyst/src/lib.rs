@@ -17,17 +17,13 @@ use sqlparser::ast::{
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
     // 1) Hard‑coded SQL
-    let sql = "\
-        SELECT AVG(salary) \
-        FROM employees \
-        WHERE dept = 'R&D'\
-    ";
+    let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
 
     // 2) Parse & lower to a LogicalPlan
     let logical = sql_to_logical_plan(sql)?;
     info!("Logical plan = {:#?}", logical);
 
-    // …next: pass `logical` into your physical‐planner → circuit builder…
+    // …next: pass `logical` into your physical‑planner → circuit builder…
 
     Ok(())
 }
@@ -77,11 +73,10 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
     }
 
     // 4) Detect aggregation vs. simple projection
-    let has_agg = select.projection.iter().any(|item| match item {
-        SelectItem::UnnamedExpr(AstExpr::Function(_))
-        | SelectItem::ExprWithAlias { expr: AstExpr::Function(_), .. } => true,
-        _ => false,
-    });
+    let has_agg = select.projection.iter().any(|item| matches!(item,
+        SelectItem::UnnamedExpr(AstExpr::Function(_)) |
+        SelectItem::ExprWithAlias { expr: AstExpr::Function(_), .. }
+    ));
 
     if has_agg {
         // a) GROUP BY expressions
@@ -121,9 +116,7 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
             .iter()
             .map(|item| match item {
                 SelectItem::UnnamedExpr(e) => Ok((ast_expr_to_expr(e.clone())?, None)),
-                SelectItem::ExprWithAlias { expr, alias } => {
-                    Ok((ast_expr_to_expr(expr.clone())?, Some(alias.value.clone())))
-                }
+                SelectItem::ExprWithAlias { expr, alias } => Ok((ast_expr_to_expr(expr.clone())?, Some(alias.value.clone()))),
                 _ => bail!("Unsupported select item: {:?}", item),
             })
             .collect::<Result<_, _>>()?;
@@ -192,8 +185,8 @@ fn unpack_agg(f: &AstFunction) -> Result<(AggregateFunc, AstExpr)> {
 
     // Extract the first argument
     let arg_expr = match f.args.get(0) {
-        Some(FunctionArg::Unnamed(FunctionArgExpr { expr, .. })) => *expr.clone(),
-        Some(FunctionArg::Named { arg, .. }) => *arg.clone(),
+        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))) => *expr.clone(),
+        Some(FunctionArg::Named { arg: FunctionArgExpr::Expr(expr), .. }) => *expr.clone(),
         _ => bail!("Aggregate function must have one expression argument"),
     };
 

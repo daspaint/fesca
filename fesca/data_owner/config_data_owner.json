@@ -1,0 +1,12 @@
+{
+  "computing_nodes": {
+    "node0_url": "http://zs02.lab.dm.informatik.tu-darmstadt.de:50051",
+    "node1_url": "http://zs03.lab.dm.informatik.tu-darmstadt.de:50051", 
+    "node2_url": "http://zs04.lab.dm.informatik.tu-darmstadt.de:50051"
+  },
+  "data_owner": {
+    "owner_id": "owner_001",
+    "owner_name": "First Data Owner"
+  },
+  "data_path": "data/partsupp.tbl"
+} 

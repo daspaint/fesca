@@ -1,200 +1,195 @@
-/*
-Handles the SQL parsing and conversion to a logical plan.
- */
 mod logical_plan;
 
 use anyhow::{Result, bail};
-use sqlparser::ast::*;
+use log::info;
+use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
+
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
-use logical_plan::{Expr, BinaryOperator, LogicalPlan, AggregateFunc};
-
-mod logical_plan;
-mod sql;           // or wherever you put your SQL→AST helpers
-
-use anyhow::Result;
-use log::info;
-use logical_plan::LogicalPlan;
-use sql::sql_to_logical_plan;  // the function you pasted earlier
+use sqlparser::ast::{
+    Statement, Query, SetExpr, SelectItem, TableWithJoins, TableFactor,
+    Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp, Function as AstFunction
+};
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    // 1) grab your SQL
+    // 1) Hard‑coded SQL
     let sql = "\
         SELECT AVG(salary) \
         FROM employees \
         WHERE dept = 'R&D'\
     ";
 
-    // 2) parse + lower to logical plan
-    let logical: LogicalPlan = sql_to_logical_plan(sql)?;
+    // 2) Parse & lower to a LogicalPlan
+    let logical = sql_to_logical_plan(sql)?;
     info!("Logical plan = {:#?}", logical);
 
-    // (you’d do more here: pass `logical` to your physical‑planner → circuit)
+    // …next: pass `logical` into your physical‐planner → circuit builder…
 
     Ok(())
 }
 
-
-// Top‐level: parse SQL and turn it into a single LogicalPlan object
+/// Parse SQL text into a single LogicalPlan
 pub fn sql_to_logical_plan(sql: &str) -> Result<LogicalPlan> {
     let dialect = GenericDialect {};
     let mut stmts = Parser::parse_sql(&dialect, sql)?;
     if stmts.len() != 1 {
-        bail!("Only single‐statement queries are supported");
+        bail!("Only single‑statement queries are supported");
     }
+    let stmt = stmts.pop().unwrap();
 
-    match stmts.pop().unwrap() {
-        Statement::Query(box query) => from_query(*query),
+    match stmt {
+        Statement::Query(boxed_q) => from_query(*boxed_q),
         other => bail!("Unsupported statement: {:?}", other),
     }
 }
 
 fn from_query(query: Query) -> Result<LogicalPlan> {
-    // Only support simple SELECT without subqueries or joins
-    let body = match query.body {
-        SetExpr::Select(box select) => select,
+    // 1) Extract the SELECT node
+    let select = match *query.body {
+        SetExpr::Select(box_select) => box_select,
         _ => bail!("Only simple SELECT is supported"),
     };
 
-    // 1) FROM → Scan
-    let scan = {
-        let table = &body.from.get(0)
-            .ok_or_else(|| anyhow::anyhow!("Missing FROM clause"))?;
-        let name = &table.relation;
-        let table_name = match name {
-            TableFactor::Table { name, .. } => name.to_string(),
-            _ => bail!("Unsupported table factor: {:?}", name),
-        };
-        let alias = table.alias.map(|a| a.name.to_string());
-        LogicalPlan::Scan { table_name, alias }
-    };
-
-    // 2) WHERE → Filter
-    let filtered = if let Some(selection) = body.selection {
-        let predicate = ast_expr_to_expr(selection)?;
-        LogicalPlan::Filter {
-            input: Box::new(scan),
-            predicate,
+    // 2) FROM → Scan
+    let twj: &TableWithJoins = select
+        .from
+        .get(0)
+        .ok_or_else(|| anyhow::anyhow!("Missing FROM clause"))?;
+    let (table_name, alias) = match &twj.relation {
+        TableFactor::Table { name, alias: tbl_alias, .. } => {
+            (name.to_string(), tbl_alias.as_ref().map(|a| a.name.value.clone()))
         }
-    } else {
-        scan
+        _ => bail!("Unsupported table factor: {:?}", twj.relation),
     };
+    let mut plan = LogicalPlan::Scan { table_name, alias };
 
-    // 3) PROJECTION and/or AGGREGATE
-    // Detect if any SELECT item is an Aggregate function
-    let has_agg = body.projection.iter().any(|item| {
-        matches!(item, SelectItem::ExprWithAlias { expr: Expr::Function(_), .. })
-            || matches!(item, SelectItem::UnnamedExpr(Expr::Function(_)))
+    // 3) WHERE → Filter
+    if let Some(selection) = select.selection {
+        let predicate = ast_expr_to_expr(selection)?;
+        plan = LogicalPlan::Filter {
+            input: Box::new(plan),
+            predicate,
+        };
+    }
+
+    // 4) Detect aggregation vs. simple projection
+    let has_agg = select.projection.iter().any(|item| match item {
+        SelectItem::UnnamedExpr(AstExpr::Function(_))
+        | SelectItem::ExprWithAlias { expr: AstExpr::Function(_), .. } => true,
+        _ => false,
     });
 
-    let plan = if has_agg {
-        // Split group_by vs. aggr_exprs
-        let group_exprs = body.group_by.iter()
+    if has_agg {
+        // a) GROUP BY expressions
+        let group_exprs = select
+            .group_by
+            .iter()
             .map(|e| ast_expr_to_expr(e.clone()))
             .collect::<Result<Vec<_>>>()?;
 
+        // b) Aggregates in SELECT
         let mut aggr_exprs = Vec::new();
-        for item in &body.projection {
+        for item in &select.projection {
             match item {
-                SelectItem::ExprWithAlias { expr, alias } if is_agg(expr) => {
-                    let (func, inner) = unpack_agg(expr)?;
-                    aggr_exprs.push((func, ast_expr_to_expr(*inner)?, Some(alias.name.to_string())));
+                SelectItem::UnnamedExpr(AstExpr::Function(f)) => {
+                    let (func, arg) = unpack_agg(f)?;
+                    let expr = ast_expr_to_expr(arg)?;
+                    aggr_exprs.push((func, expr, None));
                 }
-                SelectItem::UnnamedExpr(expr) if is_agg(expr) => {
-                    let (func, inner) = unpack_agg(expr)?;
-                    aggr_exprs.push((func, ast_expr_to_expr(*inner)?, None));
+                SelectItem::ExprWithAlias { expr: AstExpr::Function(f), alias } => {
+                    let (func, arg) = unpack_agg(f)?;
+                    let expr = ast_expr_to_expr(arg)?;
+                    aggr_exprs.push((func, expr, Some(alias.value.clone())));
                 }
                 _ => bail!("Mixed projection + aggregation isn't supported"),
             }
         }
 
-        LogicalPlan::Aggregate {
-            input: Box::new(filtered),
+        plan = LogicalPlan::Aggregate {
+            input: Box::new(plan),
             group_exprs,
             aggr_exprs,
-        }
+        };
     } else {
-        // Pure projection: map each SELECT item
-        let exprs = body.projection.iter().map(|item| {
-            match item {
+        // Pure projection
+        let exprs = select
+            .projection
+            .iter()
+            .map(|item| match item {
+                SelectItem::UnnamedExpr(e) => Ok((ast_expr_to_expr(e.clone())?, None)),
                 SelectItem::ExprWithAlias { expr, alias } => {
-                    Ok((ast_expr_to_expr(expr.clone())?, Some(alias.name.to_string())))
+                    Ok((ast_expr_to_expr(expr.clone())?, Some(alias.value.clone())))
                 }
-                SelectItem::UnnamedExpr(expr) => {
-                    Ok((ast_expr_to_expr(expr.clone())?, None))
-                }
-                SelectItem::Wildcard => bail!("Wildcard '*' is not supported"),
                 _ => bail!("Unsupported select item: {:?}", item),
-            }
-        }).collect::<Result<Vec<_>>>()?;
+            })
+            .collect::<Result<_, _>>()?;
 
-        LogicalPlan::Project {
-            input: Box::new(filtered),
+        plan = LogicalPlan::Project {
+            input: Box::new(plan),
             exprs,
-        }
-    };
+        };
+    }
 
     Ok(plan)
 }
 
-/// Recursively translate sqlparser‑rs `Expr` → our `Expr` IR
-fn ast_expr_to_expr(ast: sqlparser::ast::Expr) -> Result<Expr> {
-    use sqlparser::ast::BinaryOperator as AstOp;
+/// Translate a sqlparser‑rs `Expr` into our `logical_plan::Expr`
+fn ast_expr_to_expr(ast: AstExpr) -> Result<LPExpr> {
     match ast {
-        sqlparser::ast::Expr::Identifier(ident) => {
-            // column by name — map name → index
+        AstExpr::Identifier(ident) => {
+            // map column name → index
             let idx = match ident.value.as_str() {
-                "dept"      => 0,
-                "salary"    => 1,
-                "is_admin"  => 2,
+                "dept"   => 0,
+                "salary" => 1,
                 _ => bail!("Unknown column {}", ident.value),
             };
-            Ok(Expr::Column(idx))
+            Ok(LPExpr::Column(idx))
         }
-        sqlparser::ast::Expr::Value(Value::Number(s, _)) => {
+
+        AstExpr::Value(AstValue::Number(s, _)) => {
             let v = s.parse()?;
-            Ok(Expr::LiteralInt(v))
+            Ok(LPExpr::LiteralInt(v))
         }
-        sqlparser::ast::Expr::Value(Value::SingleQuotedString(s)) => {
-            Ok(Expr::LiteralString(s))
+
+        AstExpr::Value(AstValue::SingleQuotedString(s)) => {
+            Ok(LPExpr::LiteralString(s))
         }
-        sqlparser::ast::Expr::BinaryOp { left, op, right } => {
+
+        AstExpr::BinaryOp { left, op, right } => {
             let op = match op {
-                AstOp::Eq  => BinaryOperator::Eq,
-                AstOp::And => BinaryOperator::And,
+                AstOp::Eq   => BinaryOperator::Eq,
+                AstOp::And  => BinaryOperator::And,
                 AstOp::Plus => BinaryOperator::Plus,
-                // ... handle the ones you need
-                _ => bail!("Unsupported operator {:?}", op),
+                other => bail!("Unsupported operator {:?}", other),
             };
-            Ok(Expr::BinaryOp {
+            let l = ast_expr_to_expr(*left)?;
+            let r = ast_expr_to_expr(*right)?;
+            Ok(LPExpr::BinaryOp {
                 op,
-                left: Box::new(ast_expr_to_expr(*left)?),
-                right: Box::new(ast_expr_to_expr(*right)?),
+                left: Box::new(l),
+                right: Box::new(r),
             })
         }
-        _ => bail!("Unsupported expression {:?}", ast),
+
+        other => bail!("Unsupported AST expression {:?}", other),
     }
 }
 
-fn is_agg(expr: &sqlparser::ast::Expr) -> bool {
-    matches!(expr, sqlparser::ast::Expr::Function(f) if ["AVG","SUM","COUNT"].contains(&f.name.to_string().as_str()))
-}
-
-fn unpack_agg(expr: &sqlparser::ast::Expr) -> Result<(AggregateFunc, Box<sqlparser::ast::Expr>)> {
-    if let sqlparser::ast::Expr::Function(func) = expr {
-        let name = func.name.to_string().to_uppercase();
-        let func = match name.as_str() {
-            "AVG"   => AggregateFunc::Avg,
-            "SUM"   => AggregateFunc::Sum,
-            "COUNT" => AggregateFunc::Count,
-            other   => bail!("Unknown aggregate {}", other),
-        };
-        let inner = func.args.get(0)
-            .ok_or_else(|| anyhow::anyhow!("Empty AVG/SUM"))?
-            .clone();
-        Ok((func, Box::new(inner)))
-    } else {
-        unreachable!()
-    }
+/// Pull out (AggregateFunc, inner‑expression) from an `AstFunction`
+fn unpack_agg(f: &AstFunction) -> Result<(AggregateFunc, AstExpr)> {
+    let name = f.name.to_string().to_uppercase();
+    let func = match name.as_str() {
+        "AVG"   => AggregateFunc::Avg,
+        "SUM"   => AggregateFunc::Sum,
+        "COUNT" => AggregateFunc::Count,
+        other   => bail!("Unknown aggregate {}", other),
+    };
+    // first argument
+    let arg = f
+        .args
+        .get(0)
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("Empty aggregate"))?;
+    Ok((func, arg))
 }

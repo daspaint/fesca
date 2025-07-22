@@ -8,7 +8,8 @@ use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 use sqlparser::ast::{
     Statement, Query, SetExpr, SelectItem, TableWithJoins, TableFactor,
-    Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp, Function as AstFunction
+    Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
+    Function as AstFunction, FunctionArg
 };
 
 /// Entry point for Data Analyst
@@ -93,13 +94,13 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
         for item in &select.projection {
             match item {
                 SelectItem::UnnamedExpr(AstExpr::Function(f)) => {
-                    let (func, arg) = unpack_agg(f)?;
-                    let expr = ast_expr_to_expr(arg)?;
+                    let (func, arg_expr) = unpack_agg(f)?;
+                    let expr = ast_expr_to_expr(arg_expr)?;
                     aggr_exprs.push((func, expr, None));
                 }
                 SelectItem::ExprWithAlias { expr: AstExpr::Function(f), alias } => {
-                    let (func, arg) = unpack_agg(f)?;
-                    let expr = ast_expr_to_expr(arg)?;
+                    let (func, arg_expr) = unpack_agg(f)?;
+                    let expr = ast_expr_to_expr(arg_expr)?;
                     aggr_exprs.push((func, expr, Some(alias.value.clone())));
                 }
                 _ => bail!("Mixed projection + aggregation isn't supported"),
@@ -178,6 +179,7 @@ fn ast_expr_to_expr(ast: AstExpr) -> Result<LPExpr> {
 
 /// Pull out (AggregateFunc, inner‑expression) from an `AstFunction`
 fn unpack_agg(f: &AstFunction) -> Result<(AggregateFunc, AstExpr)> {
+    // Determine which aggregate
     let name = f.name.to_string().to_uppercase();
     let func = match name.as_str() {
         "AVG"   => AggregateFunc::Avg,
@@ -185,11 +187,16 @@ fn unpack_agg(f: &AstFunction) -> Result<(AggregateFunc, AstExpr)> {
         "COUNT" => AggregateFunc::Count,
         other   => bail!("Unknown aggregate {}", other),
     };
-    // first argument
-    let arg = f
-        .args
-        .get(0)
-        .cloned()
-        .ok_or_else(|| anyhow::anyhow!("Empty aggregate"))?;
-    Ok((func, arg))
+
+    // Extract the first argument, which is a FunctionArg
+    let arg_expr = match f.args.get(0) {
+        Some(FunctionArg::Unnamed(expr)) => expr.clone(),
+        Some(FunctionArg::Named { name, arg }) => {
+            // e.g. SUM(DISTINCT x) or alias=expr
+            arg.clone()
+        }
+        _ => bail!("Aggregate function must have one expression argument"),
+    };
+
+    Ok((func, arg_expr))
 }

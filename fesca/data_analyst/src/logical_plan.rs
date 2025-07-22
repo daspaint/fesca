@@ -1,49 +1,56 @@
 /*
-Builds logical plan from SQL AST for SELECT avg(X) FROM Y WHERE Z; (right now only this query)
+Holds the enums for the logical plan.
  */
-use sqlparser::ast::{Expr, Statement}; 
 
-/*
-List of "available" logical operations in the plan.
- */
-pub enum LogicalOp {
-    Scan { table: String },
-    Filter { predicate: Expr, input: Box<LogicalOp> },
+/// A boolean or arithmetic expression over columns/constants.
+#[derive(Debug, Clone)]
+pub enum Expr {
+    Column(usize),          // col index in the scan
+    LiteralInt(u64),        // e.g. 42
+    LiteralString(String),  // e.g. 'R&D'
+    BinaryOp {
+        op: BinaryOperator,
+        left: Box<Expr>,
+        right: Box<Expr>,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum BinaryOperator {
+    Eq, Neq, Lt, Gt, And, Or, Plus, Minus, Mul, Div,
+}
+
+// The four logical operators
+#[derive(Debug)]
+pub enum LogicalPlan {
+    // Read from a named table
+    Scan { table_name: String, alias: Option<String> },
+
+    // Filter rows by a predicate
+    Filter {
+        input: Box<LogicalPlan>,
+        predicate: Expr,
+    },
+
+    // Compute / drop columns
+    Project {
+        input: Box<LogicalPlan>,
+        exprs: Vec<(Expr, Option<String>)>, // expression + optional output alias
+    },
+
+    // Group‐by + aggregate functions
     Aggregate {
-        aggs: Vec<Expr>, 
-        input: Box<LogicalOp>,
+        input: Box<LogicalPlan>,
+        group_exprs: Vec<Expr>,
+        aggr_exprs: Vec<(AggregateFunc, Expr, Option<String>)>,
     },
 }
 
-/*
-Function to dynamically build a LogicalOp-tree from a SQL AST statement (Statement::Query).
-Currently supports only simple SELECT statements with aggregation and filtering.
- */
-pub fn build_logical_plan(stmt: &Statement) -> LogicalOp {
-    if let Statement::Query(q) = stmt {
-        if let sqlparser::ast::SetExpr::Select(sel) = &*q.body {
-            let mut plan = LogicalOp::Scan {
-                table: sel.from[0].relation.to_string(),
-            };
-            if let Some(pred) = &sel.selection {
-                plan = LogicalOp::Filter {
-                    predicate: pred.clone(),
-                    input: Box::new(plan),
-                };
-            }
-            plan = LogicalOp::Aggregate {
-                aggs: sel.projection
-                    .iter()
-                    .filter_map(|p| {
-                        if let sqlparser::ast::SelectItem::UnnamedExpr(e) = p {
-                            Some(e.clone())
-                        } else { None }
-                    })
-                    .collect(),
-                input: Box::new(plan),
-            };
-            return plan;
-        }
-    }
-    panic!("Unsupported AST for logical planner, not a SELECT");
+#[derive(Debug, Clone)]
+pub enum AggregateFunc {
+    Sum,
+    Count,
+    Avg,
+    Min,
+    Max,
 }

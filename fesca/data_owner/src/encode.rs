@@ -9,36 +9,33 @@
 // - Unsigned integers (u32): 32-bit little-endian encoding
 // - Floating point (f64): IEEE 754 double precision encoding
 // - Strings: Character-by-character encoding with configurable charsets
+//
+// Memory Optimization:
+// - Uses BitVector for efficient bit storage (1 bit per bit instead of 8 bits per bool)
 
-use crate::types::{ColumnDescriptor, ColumnType, Charset};
+use crate::types::{ColumnDescriptor, ColumnType, Charset, BitVector};
 
 /// Main encoding function that dispatches to type-specific encoders.
 /// 
 /// This function examines the column type and delegates to the appropriate
 /// encoding function. Each encoder converts the string representation of
-/// the data into a vector of boolean values (bits).
+/// the data into a bit vector for efficient storage.
 /// 
 /// # Arguments
 /// * `value` - String representation of the value to encode
 /// * `column` - Column descriptor containing type information
 /// 
 /// # Returns
-/// * `Vec<bool>` - Binary representation of the value
-/// 
-/// # Example
-/// ```
-/// let column = ColumnDescriptor {
-///     name: "age".to_string(),
-///     type_hint: ColumnType::UnsignedInt,
-/// };
-/// let bits = encode_value("25", &column);
-/// // bits will contain 32 boolean values representing the number 25
-/// ```
-pub fn encode_value(value: &str, column: &ColumnDescriptor) -> Vec<bool> {
+/// * `BitVector` - Binary representation of the value
+pub fn encode_value(value: &str, column: &ColumnDescriptor) -> BitVector {
     match &column.type_hint {
-        ColumnType::Boolean => vec![encode_bool(value)],  // Convert single bool to Vec<bool>
+        ColumnType::Boolean => {
+            let mut bv = BitVector::new();
+            bv.push(encode_bool(value));
+            bv
+        },
         ColumnType::UnsignedInt => encode_unsigned(value),
-        ColumnType::Float { .. } => encode_float(value),
+        ColumnType::Float => encode_float(value),
         ColumnType::String { max_chars, charset } => encode_string(value, *max_chars, charset),
     }
 }
@@ -77,7 +74,7 @@ fn encode_bool(value: &str) -> bool {
 /// * `value` - String representation of the unsigned integer
 /// 
 /// # Returns
-/// * `Vec<bool>` - 32-element vector with bits in little-endian order
+/// * `BitVector` - 32-bit vector with bits in little-endian order
 /// 
 /// # Example
 /// ```
@@ -91,10 +88,14 @@ fn encode_bool(value: &str) -> bool {
 /// 
 /// # Panics
 /// * If the value cannot be parsed as a u32
-fn encode_unsigned(value: &str) -> Vec<bool> {
+fn encode_unsigned(value: &str) -> BitVector {
     let n: u32 = value.parse().expect("Invalid u32 value");
+    let mut bv = BitVector::new();
     // Extract bits in little-endian order (LSB first)
-    (0..32).map(|i| (n >> i) & 1 == 1).collect()
+    for i in 0..32 {
+        bv.push((n >> i) & 1 == 1);
+    }
+    bv
 }
 
 /// Encodes a 64-bit floating point number using IEEE 754 double precision format.
@@ -111,21 +112,25 @@ fn encode_unsigned(value: &str) -> Vec<bool> {
 /// * `value` - String representation of the floating point number
 /// 
 /// # Returns
-/// * `Vec<bool>` - 64-element vector representing the IEEE 754 encoding
+/// * `BitVector` - 64-bit vector representing the IEEE 754 encoding
 /// 
 /// # Example
 /// ```
 /// let bits = encode_float("3.14");
-/// // bits will contain 64 boolean values representing 3.14 in IEEE 754 format
+/// // bits will contain 64 bits representing 3.14 in IEEE 754 format
 /// ```
 /// 
 /// # Panics
 /// * If the value cannot be parsed as an f64
-fn encode_float(value: &str) -> Vec<bool> {
+fn encode_float(value: &str) -> BitVector {
     let f: f64 = value.parse().expect("Invalid f64 value");
-    let bits = f.to_bits();
+    let bits_u64 = f.to_bits();
+    let mut bv = BitVector::new();
     // Convert to little-endian byte order, then extract bits
-    (0..64).map(|i| (bits >> i) & 1 == 1).collect()
+    for i in 0..64 {
+        bv.push((bits_u64 >> i) & 1 == 1);
+    }
+    bv
 }
 
 /// Encodes a string using the specified character set and maximum length.
@@ -140,12 +145,11 @@ fn encode_float(value: &str) -> Vec<bool> {
 /// * `charset` - Character encoding scheme to use
 /// 
 /// # Returns
-/// * `Vec<bool>` - Binary representation of the string
+/// * `BitVector` - Binary representation of the string
 /// 
 /// # Character Set Support
 /// - **ASCII**: 7 bits per character, supports standard ASCII characters (0-127)
 /// - **UTF-8**: 8 bits per character, truncates Unicode to first 256 values
-/// - **Custom**: User-defined bits per character
 /// 
 /// # Example
 /// ```
@@ -153,8 +157,8 @@ fn encode_float(value: &str) -> Vec<bool> {
 /// // Encodes "hello" + 5 null characters using 7 bits per character
 /// // Total: 10 characters × 7 bits = 70 bits
 /// ```
-fn encode_string(value: &str, max_chars: usize, charset: &Charset) -> Vec<bool> {
-    let mut bits = Vec::new();
+fn encode_string(value: &str, max_chars: usize, charset: &Charset) -> BitVector {
+    let mut bv = BitVector::new();
     let chars: Vec<char> = value.chars().collect();
     
     // Process each character position up to max_chars
@@ -163,27 +167,23 @@ fn encode_string(value: &str, max_chars: usize, charset: &Charset) -> Vec<bool> 
         let c = chars.get(i).copied().unwrap_or('\0');
         
         // Encode the character according to the charset
-        let char_bits: Vec<bool> = match charset {
+        match charset {
             Charset::Ascii => {
                 // ASCII: 7 bits per character, mask to ensure valid ASCII range
                 let b = c as u32 & 0x7F;
-                (0..7).map(|i| (b >> i) & 1 == 1).collect()
+                for j in 0..7 {
+                    bv.push((b >> j) & 1 == 1);
+                }
             }
             Charset::Utf8 => {
                 // UTF-8 simplified: 8 bits per character, truncate to first 256 values
                 let b = c as u32 & 0xFF;
-                (0..8).map(|i| (b >> i) & 1 == 1).collect()
-            }
-            Charset::Custom { bits_per_char } => {
-                // Custom charset: user-defined bits per character
-                let b = c as u32;
-                (0..*bits_per_char).map(|i| (b >> i) & 1 == 1).collect()
+                for j in 0..8 {
+                    bv.push((b >> j) & 1 == 1);
+                }
             }
         };
-        
-        // Add this character's bits to the overall bit vector
-        bits.extend(char_bits);
     }
     
-    bits
+    bv
 } 

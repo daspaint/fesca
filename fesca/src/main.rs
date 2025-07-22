@@ -9,7 +9,8 @@ use helpers::read_config::read_config;
 // use computing_node::run as run_compute; TODO: uncomment when computing_node module is ready
 use data_analyst::run as run_analyst;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Initialize environment variables and logging
     dotenv().ok();
     use env_logger::Env;
@@ -21,7 +22,7 @@ fn main() -> Result<()> {
     match role.as_str() {
         "data_owner" => {
             info!("Running as Data Owner");
-            if let Err(e) = run_data_owner() {
+            if let Err(e) = run_data_owner().await {
                 error!("Error running data owner: {}", e);
                 std::process::exit(1);
             }

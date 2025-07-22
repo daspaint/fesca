@@ -1,3 +1,5 @@
+// data_analyst/src/lib.rs
+
 mod logical_plan;
 
 use anyhow::{Result, bail};
@@ -9,7 +11,7 @@ use sqlparser::parser::Parser;
 use sqlparser::ast::{
     Statement, Query, SetExpr, SelectItem, TableWithJoins, TableFactor,
     Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
-    Function as AstFunction, FunctionArg
+    Function as AstFunction, FunctionArg, FunctionArgExpr
 };
 
 /// Entry point for Data Analyst
@@ -188,13 +190,10 @@ fn unpack_agg(f: &AstFunction) -> Result<(AggregateFunc, AstExpr)> {
         other   => bail!("Unknown aggregate {}", other),
     };
 
-    // Extract the first argument, which is a FunctionArg
+    // Extract the first argument
     let arg_expr = match f.args.get(0) {
-        Some(FunctionArg::Unnamed(expr)) => expr.clone(),
-        Some(FunctionArg::Named { name, arg }) => {
-            // e.g. SUM(DISTINCT x) or alias=expr
-            arg.clone()
-        }
+        Some(FunctionArg::Unnamed(FunctionArgExpr { expr, .. })) => *expr.clone(),
+        Some(FunctionArg::Named { arg, .. }) => *arg.clone(),
         _ => bail!("Aggregate function must have one expression argument"),
     };
 

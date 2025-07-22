@@ -1,43 +1,40 @@
-// Data Owner Module
-// =================
-// This module handles the data owner's role.
-// The data owner is responsible for:
-// 1. Loading CSV data and corresponding JSON schema
-// 2. Encoding data values into bit vectors
-// 3. Creating secret shares using 3-party replicated secret sharing
-// 4. Distributing shares to computing nodes
+// Data owner: loads TBL data, creates 3-party secret shares, distributes via gRPC.
 
 pub mod types;
-pub mod load;
 pub mod encode;
 pub mod sharing;
+pub mod config;
+pub mod grpc_client;
 
 #[cfg(test)]
 mod tests;
 
-use std::error::Error;
-use std::fs::File;
-use std::path::Path;
 use anyhow::Result;
 
-use crate::load::load_csv_and_schema_from_config;
+use crate::config::load_data_and_config;
 use crate::encode::encode_value;
-use crate::types::{SharedTableOutput, SharedPartyData, SharedRow, ColumnType};
-use crate::sharing::{share_bit_string, share_string_with_encoding};
+use crate::types::{ColumnType, BinaryPartyData, BinaryRow, Charset};
+use crate::sharing::share_bit_vector;
+use crate::grpc_client::ShareClient;
 
-/// Main entry point for the data owner role.
+/// Loads data, creates 3-party secret shares, and distributes to computing nodes.
+pub async fn run_data_owner() -> Result<()> {
 
-pub fn run_data_owner() -> Result<()> {
-    println!("Initializing data owner node...");
+    // Step 1: Load TBL data, schema, and configuration from unified config file
+    let config_path = if std::path::Path::new("config_data_owner.json").exists() {
+        "config_data_owner.json"
+    } else {
+        "../data_owner/config_data_owner.json"
+    };
     
-    // Step 1: Load CSV data and corresponding JSON schema
-    let (records, schema) = match load_csv_and_schema_from_config("config.txt") {
-        Ok((records, schema)) => {
+    let (records, schema, config) = match load_data_and_config(config_path) {
+        Ok((records, schema, config)) => {
             println!("Loaded {} records and schema for table '{}'.", records.len(), schema.table_name);
-            (records, schema)
+            println!("Loaded data owner configuration");
+            (records, schema, config)
         },
         Err(e) => {
-            eprintln!("Error loading data or schema: {e}");
+            eprintln!("Error loading data, schema, or configuration: {e}");
             std::process::exit(1);
         }
     };
@@ -45,46 +42,98 @@ pub fn run_data_owner() -> Result<()> {
     // Step 2: Initialize random number generator for secret sharing
     let mut rng = rand::thread_rng();
     
-    // Step 3: Initialize storage for each party's shares
-    let mut party0_rows = Vec::new();
-    let mut party1_rows = Vec::new();
-    let mut party2_rows = Vec::new();
+    // Step 3: Calculate column bit sizes for binary format
+    let mut column_bit_sizes = Vec::new();
+    for col_desc in &schema.columns {
+        let bit_size = match &col_desc.type_hint {
+            ColumnType::Boolean => 1,
+            ColumnType::UnsignedInt => 32,
+            ColumnType::Float => 64,
+            ColumnType::String { max_chars, charset } => {
+                let bits_per_char = match charset {
+                    Charset::Ascii => 7,
+                    Charset::Utf8 => 8,
+                };
+                (*max_chars as u32) * bits_per_char
+            }
+        };
+        column_bit_sizes.push(bit_size);
+    }
+    
+    // Step 4: Initialize binary party data structures directly
+    let mut binary_party0 = BinaryPartyData {
+        party_id: 0,
+        table_id: schema.table_id,
+        rows: Vec::new(),
+    };
+    let mut binary_party1 = BinaryPartyData {
+        party_id: 1,
+        table_id: schema.table_id,
+        rows: Vec::new(),
+    };
+    let mut binary_party2 = BinaryPartyData {
+        party_id: 2,
+        table_id: schema.table_id,
+        rows: Vec::new(),
+    };
 
-    println!("Encoding and sharing records...");
+    println!("Encoding, sharing, and converting to binary format...");
     let mut processed_rows = 0;
     
-    // Step 4: Process each record in the CSV data
+    // Step 5: Process each record in the TBL data, generating binary data directly
     for (row_idx, record) in records.iter().enumerate() {
-        // Initialize share containers for this row
-        let mut row_shares0 = Vec::new();
-        let mut row_shares1 = Vec::new();
-        let mut row_shares2 = Vec::new();
+        // Initialize binary data containers for each party
+        let mut bitstring_a0 = Vec::new();
+        let mut bitstring_b0 = Vec::new();
+        let mut bitstring_a1 = Vec::new();
+        let mut bitstring_b1 = Vec::new();
+        let mut bitstring_a2 = Vec::new();
+        let mut bitstring_b2 = Vec::new();
+        let mut column_bit_offsets = Vec::new();
+        let mut current_offset = 0u32;
         
-        // Step 5: Process each field in the record
-        for (field, col_desc) in record.iter().zip(&schema.columns) {
-            match &col_desc.type_hint {
-                // Special handling for strings - encode and share in one step
-                ColumnType::String { max_chars, charset } => {
-                    let (s0, s1, s2) = share_string_with_encoding(field, charset, *max_chars, &mut rng);
-                    row_shares0.push(s0);
-                    row_shares1.push(s1);
-                    row_shares2.push(s2);
-                },
-                // For other types: first encode to bits, then share the bits
-                _ => {
-                    let bits = encode_value(field, col_desc);
-                    let (s0, s1, s2) = share_bit_string(&bits, &mut rng);
-                    row_shares0.push(s0);
-                    row_shares1.push(s1);
-                    row_shares2.push(s2);
-                }
-            }
+        // Step 6: Process each field in the record
+        for (col_idx, (field, col_desc)) in record.iter().zip(&schema.columns).enumerate() {
+            column_bit_offsets.push(current_offset);
+            
+            // Encode all types uniformly using encode_value, then share the bits
+            let bits = encode_value(field, col_desc);
+            let ((a0_bytes, b0_bytes), (a1_bytes, b1_bytes), (a2_bytes, b2_bytes)) = share_bit_vector(&bits, &mut rng);
+            
+            // Append the byte shares directly to each party's bitstrings
+            bitstring_a0.extend_from_slice(&a0_bytes);
+            bitstring_b0.extend_from_slice(&b0_bytes);
+            bitstring_a1.extend_from_slice(&a1_bytes);
+            bitstring_b1.extend_from_slice(&b1_bytes);
+            bitstring_a2.extend_from_slice(&a2_bytes);
+            bitstring_b2.extend_from_slice(&b2_bytes);
+            
+            current_offset += column_bit_sizes[col_idx];
         }
         
-        // Step 6: Store the shares for each party
-        party0_rows.push(SharedRow { entries: row_shares0 });
-        party1_rows.push(SharedRow { entries: row_shares1 });
-        party2_rows.push(SharedRow { entries: row_shares2 });
+        // Step 7: Create BinaryRow objects and add to each party's data
+        let binary_row0 = BinaryRow {
+            bitstring_a: bitstring_a0,
+            bitstring_b: bitstring_b0,
+            column_bit_offsets: column_bit_offsets.clone(),
+            column_bit_lengths: column_bit_sizes.clone(),
+        };
+        let binary_row1 = BinaryRow {
+            bitstring_a: bitstring_a1,
+            bitstring_b: bitstring_b1,
+            column_bit_offsets: column_bit_offsets.clone(),
+            column_bit_lengths: column_bit_sizes.clone(),
+        };
+        let binary_row2 = BinaryRow {
+            bitstring_a: bitstring_a2,
+            bitstring_b: bitstring_b2,
+            column_bit_offsets: column_bit_offsets.clone(),
+            column_bit_lengths: column_bit_sizes.clone(),
+        };
+        
+        binary_party0.rows.push(binary_row0);
+        binary_party1.rows.push(binary_row1);
+        binary_party2.rows.push(binary_row2);
         
         // Progress tracking
         processed_rows += 1;
@@ -98,84 +147,44 @@ pub fn run_data_owner() -> Result<()> {
         }
     }
     
-    println!("All records encoded and shared. Total rows processed: {}", processed_rows);
-
-    // Step 7: Package the shares into the final output structure
-    let party0_data = SharedPartyData {
-        party_id: 0,
-        table_id: schema.table_id,
-        rows: party0_rows,
-    };
-    let party1_data = SharedPartyData {
-        party_id: 1,
-        table_id: schema.table_id,
-        rows: party1_rows,
-    };
-    let party2_data = SharedPartyData {
-        party_id: 2,
-        table_id: schema.table_id,
-        rows: party2_rows,
-    };
+    println!("All records encoded, shared, and converted to binary. Total rows processed: {}", processed_rows);
     
-    let shared_table = SharedTableOutput {
-        party0_data,
-        party1_data,
-        party2_data,
-        schema,
-    };
+    println!("Binary data ready for transmission. Party 0 has {} rows with {} bytes per row", 
+             binary_party0.rows.len(),
+             binary_party0.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
     
-    println!("Shared table generated. Example: party0 first row: {:?}", shared_table.party0_data.rows.get(0));
+    // Step 8: Send individual party data to computing nodes via gRPC
+    println!("Sending shares to computing nodes...");
     
-    // TODO: In a real implementation, this would distribute the shares to computing nodes
+    let client = ShareClient::new(config.data_owner);
+    let node_urls = config.computing_nodes.as_array();
     
-    Ok(())
-}
-
-/// Legacy function for reading and displaying CSV data.
-/// 
-/// This function is kept for backward compatibility and debugging purposes.
-/// It simply reads a CSV file and displays the first 10 entries.
-/// 
-/// # Arguments
-/// * `file_path` - Path to the CSV file to read
-/// 
-/// # Returns
-/// * `Result<(), Box<dyn Error>>` - Success or error information
-pub fn read_csv_data(file_path: &str) -> Result<(), Box<dyn Error>> {
-    // Check if file exists
-    if !Path::new(file_path).exists() {
-        return Err(format!("File not found: {}", file_path).into());
-    }
-
-    // Create a CSV reader
-    let file = File::open(file_path)?;
-    let mut rdr = csv::Reader::from_reader(file);
-    
-    // Get headers
-    let headers = rdr.headers()?.clone();
-    
-    println!("\nFirst 10 entries of CSV data:");
-    println!("=============================");
-    
-    // Print headers
-    for header in headers.iter() {
-        print!("{:<8}", header);
-    }
-    println!();
-    
-    // Print separator
-    println!("{}", "-".repeat(32));
-    
-    // Print first 10 records
-    for (i, result) in rdr.records().enumerate() {
-        if i >= 10 { break; }  // Only show first 10 entries
-        
-        let record = result?;
-        for field in record.iter() {
-            print!("{:<8}", field);
+    // Send binary data to each computing node using the new binary format
+    match client.send_binary_table_shares(
+        &schema,
+        &[binary_party0.clone(), binary_party1.clone(), binary_party2.clone()],
+        &node_urls,
+    ).await {
+        Ok(responses) => {
+            for (i, response) in responses.iter().enumerate() {
+                println!("Node {} response: success={}, message={}, path={}", 
+                         i, response.success, response.message, response.storage_path);
+            }
+        },
+        Err(e) => {
+            eprintln!("Error sending data to computing nodes: {}", e);
+            // Continue execution for now, but log the error
         }
-        println!();
     }
+    
+    println!("Data sharing completed successfully!");
+    println!("Party data sizes - Binary format:");
+    println!("  Party 0: {} rows, {} bytes per row", binary_party0.rows.len(), 
+             binary_party0.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
+    println!("  Party 1: {} rows, {} bytes per row", binary_party1.rows.len(),
+             binary_party1.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
+    println!("  Party 2: {} rows, {} bytes per row", binary_party2.rows.len(),
+             binary_party2.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
     
     Ok(())
 }

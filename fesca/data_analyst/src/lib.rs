@@ -134,7 +134,6 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
 fn ast_expr_to_expr(ast: AstExpr) -> Result<LPExpr> {
     match ast {
         AstExpr::Identifier(ident) => {
-            // map column name → index
             let idx = match ident.value.as_str() {
                 "dept"   => 0,
                 "salary" => 1,
@@ -174,7 +173,6 @@ fn ast_expr_to_expr(ast: AstExpr) -> Result<LPExpr> {
 
 /// Pull out (AggregateFunc, inner‑expression) from an `AstFunction`
 fn unpack_agg(f: &AstFunction) -> Result<(AggregateFunc, AstExpr)> {
-    // Determine which aggregate
     let name = f.name.to_string().to_uppercase();
     let func = match name.as_str() {
         "AVG"   => AggregateFunc::Avg,
@@ -185,8 +183,8 @@ fn unpack_agg(f: &AstFunction) -> Result<(AggregateFunc, AstExpr)> {
 
     // Extract the first argument
     let arg_expr = match f.args.get(0) {
-        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))) => *expr.clone(),
-        Some(FunctionArg::Named { arg: FunctionArgExpr::Expr(expr), .. }) => *expr.clone(),
+        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))) => expr.clone(),
+        Some(FunctionArg::Named { arg: FunctionArgExpr::Expr(expr), .. }) => expr.clone(),
         _ => bail!("Aggregate function must have one expression argument"),
     };
 

@@ -18,7 +18,7 @@ use sqlparser::ast::{
 pub fn run() -> Result<()> {
     // 1) Hard‑coded SQL
     let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
-
+    info!("Running SQL statement: {}", sql);
     // 2) Parse & lower to a LogicalPlan
     let logical = sql_to_logical_plan(sql)?;
     info!("Logical plan = {:#?}", logical);
@@ -32,6 +32,7 @@ pub fn run() -> Result<()> {
 pub fn sql_to_logical_plan(sql: &str) -> Result<LogicalPlan> {
     let dialect = GenericDialect {};
     let mut stmts = Parser::parse_sql(&dialect, sql)?;
+    info!("Parsed SQL AST: {:?}", stmts);
     if stmts.len() != 1 {
         bail!("Only single‑statement queries are supported");
     }

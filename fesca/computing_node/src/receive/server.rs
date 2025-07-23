@@ -5,6 +5,7 @@
 use anyhow::Result;
 use std::path::Path;
 use tonic::{transport::Server, Request, Response, Status};
+use log::{info, error};
 
 // Include the generated protobuf code
 pub mod share_service {
@@ -49,17 +50,17 @@ impl ShareService for ShareReceiver {
         let party_data = req.party_data.as_ref()
             .ok_or_else(|| Status::invalid_argument("Missing party data"))?;
 
-        println!("Computing node received binary shares from: {} ({})", 
+        info!("Computing node received binary shares from: {} ({})", 
                  data_owner.owner_name, data_owner.owner_id);
-        println!("Table: {} (ID: {}), Party: {}", 
+        info!("Table: {} (ID: {}), Party: {}", 
                  schema.table_name, schema.table_id, party_data.party_id);
-        println!("Rows received: {}", party_data.rows.len());
+        info!("Rows received: {}", party_data.rows.len());
 
         // Store the binary data using the storage module
         match self.storage.store_binary_shares(party_data, schema, data_owner).await {
             Ok(files_created) => {
                 let success_msg = format!("Successfully stored binary shares. Files: {:?}", files_created);
-                println!("{}", success_msg);
+                info!("{}", success_msg);
                 
                 Ok(Response::new(SendTableSharesResponse {
                     success: true,
@@ -69,7 +70,7 @@ impl ShareService for ShareReceiver {
             }
             Err(e) => {
                 let error_msg = format!("Failed to store binary shares: {}", e);
-                eprintln!("{}", error_msg);
+                error!("{}", error_msg);
                 
                 Ok(Response::new(SendTableSharesResponse {
                     success: false,
@@ -85,15 +86,15 @@ impl ShareService for ShareReceiver {
 pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
     // Create storage directory if it doesn't exist
     if !Path::new(&storage_path).exists() {
-        println!("Creating storage directory: {}", storage_path);
+        info!("Creating storage directory: {}", storage_path);
         std::fs::create_dir_all(&storage_path)?;
     }
 
     let addr = format!("0.0.0.0:{}", port).parse()?;
     let share_receiver = ShareReceiver::new(storage_path.clone());
 
-    println!("Starting computing node gRPC server on {}", addr);
-    println!("Binary shares will be stored in: {}", storage_path);
+    info!("Starting computing node gRPC server on {}", addr);
+    info!("Binary shares will be stored in: {}", storage_path);
 
     Server::builder()
         .add_service(ShareServiceServer::new(share_receiver))

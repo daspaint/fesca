@@ -3,10 +3,6 @@ name = "data_owner"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "data_owner"
-path = "src/main.rs"
-
 [dependencies]
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
@@ -17,6 +13,7 @@ bitvec = { version = "1.0", features = ["serde"] }
 tonic = "0.12"
 prost = "0.13"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+log = "0.4"
 
 [build-dependencies]
 tonic-build = "0.12"

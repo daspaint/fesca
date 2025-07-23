@@ -10,6 +10,7 @@ pub mod grpc_client;
 mod tests;
 
 use anyhow::Result;
+use log::{info, error};
 
 use crate::config::load_data_and_config;
 use crate::encode::encode_value;
@@ -18,7 +19,15 @@ use crate::sharing::share_bit_vector;
 use crate::grpc_client::ShareClient;
 
 /// Loads data, creates 3-party secret shares, and distributes to computing nodes.
-pub async fn run_data_owner() -> Result<()> {
+/// This function is called by the main FESCA entry point.
+pub fn run_data_owner() -> Result<()> {
+    // Run the async operation using tokio runtime
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(run_data_owner_async())
+}
+
+/// Internal async implementation of data owner functionality
+async fn run_data_owner_async() -> Result<()> {
 
     // Step 1: Load TBL data, schema, and configuration from unified config file
     let config_path = if std::path::Path::new("config_data_owner.json").exists() {
@@ -29,12 +38,12 @@ pub async fn run_data_owner() -> Result<()> {
     
     let (records, schema, config) = match load_data_and_config(config_path) {
         Ok((records, schema, config)) => {
-            println!("Loaded {} records and schema for table '{}'.", records.len(), schema.table_name);
-            println!("Loaded data owner configuration");
+            info!("Loaded {} records and schema for table '{}'.", records.len(), schema.table_name);
+            info!("Loaded data owner configuration");
             (records, schema, config)
         },
         Err(e) => {
-            eprintln!("Error loading data, schema, or configuration: {e}");
+            error!("Error loading data, schema, or configuration: {e}");
             std::process::exit(1);
         }
     };
@@ -77,7 +86,7 @@ pub async fn run_data_owner() -> Result<()> {
         rows: Vec::new(),
     };
 
-    println!("Encoding, sharing, and converting to binary format...");
+    info!("Encoding, sharing, and converting to binary format...");
     let mut processed_rows = 0;
     
     // Step 5: Process each record in the TBL data, generating binary data directly
@@ -138,23 +147,23 @@ pub async fn run_data_owner() -> Result<()> {
         // Progress tracking
         processed_rows += 1;
         if processed_rows % 1000 == 0 {
-            println!("Processed {} rows...", processed_rows);
+            info!("Processed {} rows...", processed_rows);
         }
         
         // Debug output for first few rows
         if row_idx < 2 {
-            println!("Row {row_idx} shared: first field = {:?}", record.get(0));
+            info!("Row {row_idx} shared: first field = {:?}", record.get(0));
         }
     }
     
-    println!("All records encoded, shared, and converted to binary. Total rows processed: {}", processed_rows);
+    info!("All records encoded, shared, and converted to binary. Total rows processed: {}", processed_rows);
     
-    println!("Binary data ready for transmission. Party 0 has {} rows with {} bytes per row", 
+    info!("Binary data ready for transmission. Party 0 has {} rows with {} bytes per row", 
              binary_party0.rows.len(),
              binary_party0.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
     
     // Step 8: Send individual party data to computing nodes via gRPC
-    println!("Sending shares to computing nodes...");
+    info!("Sending shares to computing nodes...");
     
     let client = ShareClient::new(config.data_owner);
     let node_urls = config.computing_nodes.as_array();
@@ -167,23 +176,23 @@ pub async fn run_data_owner() -> Result<()> {
     ).await {
         Ok(responses) => {
             for (i, response) in responses.iter().enumerate() {
-                println!("Node {} response: success={}, message={}, path={}", 
+                info!("Node {} response: success={}, message={}, path={}", 
                          i, response.success, response.message, response.storage_path);
             }
         },
         Err(e) => {
-            eprintln!("Error sending data to computing nodes: {}", e);
+            error!("Error sending data to computing nodes: {}", e);
             // Continue execution for now, but log the error
         }
     }
     
-    println!("Data sharing completed successfully!");
-    println!("Party data sizes - Binary format:");
-    println!("  Party 0: {} rows, {} bytes per row", binary_party0.rows.len(), 
+    info!("Data sharing completed successfully!");
+    info!("Party data sizes - Binary format:");
+    info!("  Party 0: {} rows, {} bytes per row", binary_party0.rows.len(), 
              binary_party0.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
-    println!("  Party 1: {} rows, {} bytes per row", binary_party1.rows.len(),
+    info!("  Party 1: {} rows, {} bytes per row", binary_party1.rows.len(),
              binary_party1.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
-    println!("  Party 2: {} rows, {} bytes per row", binary_party2.rows.len(),
+    info!("  Party 2: {} rows, {} bytes per row", binary_party2.rows.len(),
              binary_party2.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
     
     Ok(())

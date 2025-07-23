@@ -30,11 +30,7 @@ pub fn run_data_owner() -> Result<()> {
 async fn run_data_owner_async() -> Result<()> {
 
     // Step 1: Load TBL data, schema, and configuration from unified config file
-    let config_path = if std::path::Path::new("config_data_owner.json").exists() {
-        "config_data_owner.json"
-    } else {
-        "../data_owner/config_data_owner.json"
-    };
+    let config_path = "config_data_owner.json";
     
     let (records, schema, config) = match load_data_and_config(config_path) {
         Ok((records, schema, config)) => {

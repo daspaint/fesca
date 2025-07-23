@@ -8,5 +8,5 @@
     "owner_id": "owner_001",
     "owner_name": "First Data Owner"
   },
-  "data_path": "data/partsupp.tbl"
+  "data_path": "data_owner/data/partsupp.tbl"
 } 

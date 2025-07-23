@@ -7,12 +7,11 @@ Example usage:
 use std::{error::Error, process};
 use clap::{Parser, ValueEnum, error::ErrorKind};
 use env_logger::{Builder, Env};
-use log::{error, info, LevelFilter};
+use log::{error, info};
 
-use data_owner::run_data_owner as run_data_owner;
+use data_owner::run_data_owner;
 use data_analyst::run as run_data_analyst;
-// TODO: when ready, uncomment this line and implement computing_node::run()
-// use computing_node::run as run_computing_node;
+use computing_node::run_computing_node;
 
 #[derive(Clone, ValueEnum, Debug)]
 #[clap(rename_all = "snake_case")]
@@ -66,12 +65,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         Role::ComputingNode => {
             info!("Running as Computing Node...");
-            // TODO: implement `computing_node::run()` and uncomment:
-            // if let Err(e) = run_computing_node() {
-            //     error!("Error running computing node: {}", e);
-            //     process::exit(1);
-            // }
-            unimplemented!("computing_node not implemented yet");
+            if let Err(e) = run_computing_node() {
+                error!("Error running computing node: {}", e);
+                process::exit(1);
+            }
         }
     }
 

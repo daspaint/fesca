@@ -6,10 +6,11 @@ use std::process;
 
 use data_owner::read_csv_data;
 use helpers::read_config::read_config;
-// use computing_node::run as run_compute; TODO: uncomment when computing_node module is ready
+use computing_node::run as run_compute;
 use data_analyst::run as run_analyst;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Initialize environment variables and logging
     dotenv().ok();
     use env_logger::Env;
@@ -36,9 +37,10 @@ fn main() -> Result<()> {
         }
         "computing_node" => {
             info!("Running as Compute Node");
-            // TODO: implement computing_node::run() and uncomment:
-            // computing_node::run()?;
-            unimplemented!("computing_node not implemented yet");
+            if let Err(e) = run_compute().await {
+                error!("Error running computing node: {}", e);
+                std::process::exit(1);
+            }
         }
         "data_analyst" => {
             info!("Running as Data Analyst");

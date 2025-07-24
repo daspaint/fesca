@@ -11,34 +11,39 @@ pub use correlated_randomness::{generate_correlated_single_bit, generate_informa
 pub use boolean_circuits::{generate_shares, reconstruct_shares, xor_gate_single_bit, and_gate_single_bit};
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("=== Minimal Computing Node Demo ===");
-    // 1. Correlated Randomness
+    println!("=== Computing Node: XOR, AND & Correlated Randomness ===");
+    
+    // 1. Correlated Randomness Generation (für AND-Gates)
+    println!("\n1. Correlated Randomness Generation:");
     let (alpha, beta, gamma) = generate_correlated_single_bit();
-    println!("Correlated Randomness: alpha={}, beta={}, gamma={}", alpha, beta, gamma);
-    let cr = CorrelatedRandomnessBoolean { alpha, beta, gamma };
-
-    // 2. Secret Sharing
-    let secret_a = true;
-    let secret_b = false;
-    let shares_a = generate_shares(secret_a);
-    let shares_b = generate_shares(secret_b);
-    println!("Secret A shares: {:?}", shares_a);
-    println!("Secret B shares: {:?}", shares_b);
-
-    // 3. XOR Gate
-    let xor_share = xor_gate_single_bit(shares_a.p1_share.clone(), shares_b.p1_share.clone());
-    println!("XOR Gate Output (P1 shares): {:?}", xor_share);
-
-    // 4. AND Gate
-    let and_share = and_gate_single_bit(shares_a.p1_share.clone(), shares_b.p1_share.clone(), &cr);
-    println!("AND Gate Output (P1 shares, with CR): {:?}", and_share);
-
-    // 5. Rekonstruktion
-    let rec_a = reconstruct_shares(&shares_a.p1_share, &shares_a.p2_share);
-    let rec_b = reconstruct_shares(&shares_b.p1_share, &shares_b.p2_share);
-    println!("Reconstructed A: {} (sollte {} sein)", rec_a, secret_a);
-    println!("Reconstructed B: {} (sollte {} sein)", rec_b, secret_b);
-
+    println!("   α = {}, β = {}, γ = {}", alpha, beta, gamma);
+    println!("   Verifikation: α ⊕ β ⊕ γ = {} ⊕ {} ⊕ {} = {}", 
+             alpha, beta, gamma, alpha ^ beta ^ gamma);
+    
+    // 2. XOR Gate Demo (lokal, keine Kommunikation)
+    println!("\n2. XOR Gate (Lokale Berechnung):");
+    let input1 = SecretShareSingleBit { x: true, a: false };
+    let input2 = SecretShareSingleBit { x: false, a: true };
+    let xor_result = xor_gate_single_bit(input1.clone(), input2.clone());
+    println!("   Input 1: ({}, {})", input1.x, input1.a);
+    println!("   Input 2: ({}, {})", input2.x, input2.a);
+    println!("   XOR Output: ({}, {})", xor_result.x, xor_result.a);
+    println!("   → Keine Kommunikation nötig!");
+    
+    // 3. AND Gate Demo (mit Kommunikation und CR)
+    println!("\n3. AND Gate (Mit Kommunikation & Correlated Randomness):");
+    println!("   Input 1: ({}, {})", input1.x, input1.a);
+    println!("   Input 2: ({}, {})", input2.x, input2.a);
+    println!("   Correlated Randomness: α={}, β={}, γ={}", alpha, beta, gamma);
+    let and_result = and_gate_single_bit(input1, input2, &CorrelatedRandomnessBoolean { alpha, beta, gamma });
+    println!("   AND Output: ({}, {})", and_result.x, and_result.a);
+    println!("   → Kommunikation zwischen Parteien nötig!");
+    
+    println!("\n=== Computing Node bereit für MPC-Berechnungen ===");
+    println!("✅ XOR: Lokal, schnell");
+    println!("✅ AND: Mit CR, kommunikationsintensiv");
+    println!("✅ CR: Für AND-Gates verfügbar");
+    
     Ok(())
 }
 

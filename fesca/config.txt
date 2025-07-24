@@ -1,2 +1,2 @@
-role:data_analyst
+role:computing_node
 data_path:data/airtravel.csv

@@ -17,8 +17,8 @@ pub fn generate_shares(secret: bool) -> CompleteShares {
     let mut rng = rand::thread_rng();
 
     // Choose random bits x1, x2, x3 such that x1 ⊕ x2 ⊕ x3 = 0
-    let x1 = rng.gen::<bool>();
-    let x2 = rng.gen::<bool>();
+    let x1 = rng.random::<bool>();
+    let x2 = rng.random::<bool>();
     let x3 = x1 ^ x2; // Ensures x1 ⊕ x2 ⊕ x3 = 0
 
     // Compute shares according to paper
@@ -350,7 +350,7 @@ pub fn and_gate_single_bit_legacy(
     
     // Generate new shares for the result
     let mut rng = rand::thread_rng();
-    let new_x = rng.gen::<bool>();
+    let new_x = rng.random::<bool>();
     let new_a = new_x ^ result_bit;
     
     SecretShareSingleBit {

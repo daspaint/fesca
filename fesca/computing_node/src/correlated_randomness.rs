@@ -14,8 +14,8 @@ use crate::types::{
 pub fn generate_correlated_single_bit() -> (bool, bool, bool) {
     let mut rng = rand::thread_rng();
 
-    let alpha = rng.gen::<bool>();
-    let beta = rng.gen::<bool>();
+    let alpha = rng.random::<bool>();
+    let beta = rng.random::<bool>();
     let gamma = alpha ^ beta;
 
     (alpha, beta, gamma)
@@ -28,9 +28,9 @@ pub fn generate_information_theoretic_correlated_randomness() -> CorrelatedRando
     let mut rng = rand::thread_rng();
     
     // Each party chooses a random bit
-    let p1 = rng.gen::<bool>();
-    let p2 = rng.gen::<bool>();
-    let p3 = rng.gen::<bool>();
+    let p1 = rng.random::<bool>();
+    let p2 = rng.random::<bool>();
+    let p3 = rng.random::<bool>();
     
     // Compute correlated values according to paper
     let alpha = p3 ^ p1;  // P1 computes α = p3 ⊕ p1
@@ -71,9 +71,9 @@ pub fn init_computational_correlated_randomness() -> ComputationalCorrelatedRand
     let mut rng = rand::thread_rng();
     
     // Each party chooses a random 256-bit key
-    let k1: Vec<u8> = (0..32).map(|_| rng.gen::<u8>()).collect();
-    let k2: Vec<u8> = (0..32).map(|_| rng.gen::<u8>()).collect();
-    let k3: Vec<u8> = (0..32).map(|_| rng.gen::<u8>()).collect();
+    let k1: Vec<u8> = (0..32).map(|_| rng.random::<u8>()).collect();
+    let k2: Vec<u8> = (0..32).map(|_| rng.random::<u8>()).collect();
+    let k3: Vec<u8> = (0..32).map(|_| rng.random::<u8>()).collect();
     
     println!("=== Computational Correlated Randomness Init ===");
     println!("P1 chooses key k1 (256 bits)");
@@ -113,8 +113,8 @@ pub fn generate_arithmetic_correlated_randomness(modulus: u64) -> CorrelatedRand
     let mut rng = rand::thread_rng();
     
     // Generate random values in the ring
-    let alpha = rng.gen_range(0..modulus);
-    let beta = rng.gen_range(0..modulus);
+    let alpha = rng.random_range(0..modulus);
+    let beta = rng.random_range(0..modulus);
     let gamma = (modulus - ((alpha + beta) % modulus)) % modulus; // Ensures α + β + γ = 0 mod 2^n
     
     println!("=== Arithmetic Correlated Randomness (mod {}) ===", modulus);
@@ -134,14 +134,14 @@ pub fn generate_arithmetic_correlated_randomness(modulus: u64) -> CorrelatedRand
 /// Party 1 generates its part of correlated randomness
 pub fn party_1_generate() -> PartyState {
     let mut rng = rand::thread_rng();
-    let rho_1 = rng.gen_range(0..=1);
+    let rho_1 = rng.random_range(0..=1);
     
     // P1 sendet rho_1 an P2 (simuliert)
     println!("P1: Wähle ρ₁ = {}", rho_1);
     println!("P1: Sende ρ₁ = {} an P2", rho_1);
     
     // P1 empfängt ρ₃ von P3 (wird später simuliert)
-    let rho_3 = rng.gen_range(0..=1); // Simuliert ρ₃ von P3
+    let rho_3 = rng.random_range(0..=1); // Simuliert ρ₃ von P3
     
     // P1 berechnet α = ρ₃ ⊕ ρ₁
     let alpha = rho_3 ^ rho_1;
@@ -160,14 +160,14 @@ pub fn party_1_generate() -> PartyState {
 /// Party 2 generates its part of correlated randomness
 pub fn party_2_generate() -> PartyState {
     let mut rng = rand::thread_rng();
-    let rho_2 = rng.gen_range(0..=1);
+    let rho_2 = rng.random_range(0..=1);
     
     // P2 sendet rho_2 an P3 (simuliert)
     println!("P2: Wähle ρ₂ = {}", rho_2);
     println!("P2: Sende ρ₂ = {} an P3", rho_2);
     
     // P2 empfängt ρ₁ von P1 (wird später simuliert)
-    let rho_1 = rng.gen_range(0..=1); // Simuliert ρ₁ von P1
+    let rho_1 = rng.random_range(0..=1); // Simuliert ρ₁ von P1
     
     // P2 berechnet β = ρ₁ ⊕ ρ₂
     let beta = rho_1 ^ rho_2;
@@ -186,14 +186,14 @@ pub fn party_2_generate() -> PartyState {
 /// Party 3 generates its part of correlated randomness
 pub fn party_3_generate() -> PartyState {
     let mut rng = rand::thread_rng();
-    let rho_3 = rng.gen_range(0..=1);
+    let rho_3 = rng.random_range(0..=1);
     
-    // P3 sendet rho_3 an P1 (simuliert)
+    // P3 sendet rho_3 an P3 (simuliert)
     println!("P3: Wähle ρ₃ = {}", rho_3);
     println!("P3: Sende ρ₃ = {} an P1", rho_3);
     
     // P3 empfängt ρ₂ von P2 (wird später simuliert)
-    let rho_2 = rng.gen_range(0..=1); // Simuliert ρ₂ von P2
+    let rho_2 = rng.random_range(0..=1); // Simuliert ρ₂ von P2
     
     // P3 berechnet γ = ρ₂ ⊕ ρ₃
     let gamma = rho_2 ^ rho_3;

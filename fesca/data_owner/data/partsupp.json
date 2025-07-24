@@ -1,12 +1,12 @@
 {
     "table_name": "partsupp",
     "table_id": 4,
-    "row_count": 160000,
+    "row_count": 4,
     "columns": [
       { "name": "part_key",        "type_hint": "UnsignedInt" },
       { "name": "supplier_key",    "type_hint": "UnsignedInt" },
       { "name": "available_qty",   "type_hint": "UnsignedInt" },
-      { "name": "supply_cost",     "type_hint": { "Float": { "bit_width": 64 } } },
+      { "name": "supply_cost",     "type_hint": "Float" },
       { "name": "extra_code",      "type_hint": { "String": { "max_chars": 8,  "charset": "Ascii" } } },
       { "name": "comment",         "type_hint": { "String": { "max_chars": 128, "charset": "Ascii" } } }
     ]

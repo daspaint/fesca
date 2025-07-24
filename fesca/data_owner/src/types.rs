@@ -1,63 +1,33 @@
+// 3-party replicated secret sharing data structures.
+// Uses bitvec for efficient bit storage (2 bits per original bit, ~87.5% memory reduction).
+
 use serde::{Deserialize, Serialize};
+use bitvec::prelude::*;
 
-/// Represents a single bit share in our 3-party replicated secret sharing scheme.
-/// Each bit is split into three shares that are distributed among three computing nodes.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct BitShare {
-    pub share_a: bool,
-    pub share_b: bool,
-}
-
-/// Represents a string of bits where each bit is secret shared across three computing nodes.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct SharedBitString {
-    pub bits: Vec<BitShare>,
-}
-
-/// Represents a row of data where each entry is a shared bit string.
-/// In our 3-party system, this structure holds the shares of all entries in a single row,
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct SharedRow {
-    pub entries: Vec<SharedBitString>,
-}
-
-/// Represents the data held by a single computing node in our 3-party system.
-/// Each computing node holds one of the three shares for the entire table, identified by
-/// party_id and table_id. The rows field contains all the shared rows that this
-/// computing node is responsible for.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct SharedPartyData {
-    pub party_id: u32,
-    pub table_id: u32,
-    pub rows: Vec<SharedRow>,
-}
-
-/// Defines the possible data types for columns in the shared table.
-/// This is used to ensure proper interpretation of the shared values
-/// when they are reconstructed by the three computing nodes.
+/// Character encoding schemes for string data.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Charset {
     Ascii,       // 7 bits per char
-    Utf8,        // Variable, but use fixed-length encoding per char
-    Custom { bits_per_char: usize },
+    Utf8,        // 8 bits per char (simplified, truncates Unicode)
 }
 
+/// Data types for table columns.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum ColumnType {
     Boolean,
-    UnsignedInt,       // Only u32 is supported
-    Float { bit_width: usize },             // f32, f64
-    String { max_chars: usize, charset: Charset }, // Encoded per-char
+    UnsignedInt,       // Only u32 is supported (32 bits)
+    Float,             // f64 (64 bits)
+    String { max_chars: usize, charset: Charset }, // Fixed-length string encoding
 }
 
-/// Describes the metadata for a single column in the shared table.
+/// Column metadata for table schema.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct ColumnDescriptor {
     pub name: String,
     pub type_hint: ColumnType,
 }
 
-/// Defines the structure and metadata of the entire shared table.
+/// Table schema with column definitions and metadata.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct TableSchema {
     pub table_name: String,
@@ -66,11 +36,32 @@ pub struct TableSchema {
     pub row_count: usize,
 }
 
-/// Represents the complete shared table data distributed across three computing nodes.
+/// Efficient bit vector using u8 storage with LSB-first ordering.
+pub type BitVector = BitVec<u8, bitvec::order::Lsb0>;
+
+/// Bit vector pair for 3-party replicated secret sharing.
+/// Each party gets 2 of 3 shares. Reconstruction: original = share_a ⊕ share_b ⊕ share_c
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct SharedTableOutput {
-    pub party0_data: SharedPartyData,
-    pub party1_data: SharedPartyData,
-    pub party2_data: SharedPartyData,
-    pub schema: TableSchema,
-} 
+pub struct SharedBitVector {
+    pub share_a: BitVector,
+    pub share_b: BitVector,
+}
+
+
+
+/// Binary row data with concatenated column bitstrings and metadata.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct BinaryRow {
+    pub bitstring_a: Vec<u8>,  // First bitstring as bytes
+    pub bitstring_b: Vec<u8>,  // Second bitstring as bytes
+    pub column_bit_offsets: Vec<u32>,  // Starting bit position for each column
+    pub column_bit_lengths: Vec<u32>,  // Bit length for each column
+}
+
+/// Binary representation of party data for efficient transmission.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct BinaryPartyData {
+    pub party_id: u32,
+    pub table_id: u32,
+    pub rows: Vec<BinaryRow>,
+}

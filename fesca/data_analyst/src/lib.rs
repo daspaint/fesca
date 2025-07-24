@@ -1,10 +1,13 @@
 // data_analyst/src/lib.rs
 
 mod logical_plan;
+mod physical_plan;
+mod circuit_builder;
 
 use anyhow::{Result, bail};
 use log::info;
 use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
+use physical_plan::compile_to_circuit;
 
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
@@ -14,17 +17,24 @@ use sqlparser::ast::{
     Function as AstFunction, FunctionArg, FunctionArgExpr
 };
 
+
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    // 1) Hard‑coded SQL
+    // Parse SQL → LogicalPlan
     let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
-    info!("Running SQL statement: {}", sql);
-    // 2) Parse & lower to a LogicalPlan
     let logical = sql_to_logical_plan(sql)?;
-    info!("Logical plan = {:#?}", logical);
+    info!("LogicalPlan: {:#?}", logical);
 
-    // …next: pass `logical` into your physical‑planner → circuit builder…
+    // Build circuit for e.g. 5 rows × 2 columns
+    let circuit = compile_to_circuit(&logical, 5, 2);
+    info!("Circuit wire_count = {}", circuit.wire_count);
+    info!("Circuit gates count = {}", circuit.gates.len());
+    info!("Circuit outputs = {:?}", circuit.outputs);
 
+    // Log each gate
+    for g in &circuit.gates {
+        info!("Gate: {:?}", g);
+    }
     Ok(())
 }
 

@@ -5,17 +5,17 @@ mod circuit_builder;
 
 use anyhow::{Result, bail};
 use log::info;
-use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
+// use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
 use logical_to_circuits::compile_to_circuit;
 use sql_to_logical::sql_to_logical_plan;
 
-use sqlparser::dialect::GenericDialect;
-use sqlparser::parser::Parser;
-use sqlparser::ast::{
-    Statement, Query, SetExpr, SelectItem, TableWithJoins, TableFactor,
-    Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
-    Function as AstFunction, FunctionArg, FunctionArgExpr
-};
+// use sqlparser::dialect::GenericDialect;
+// use sqlparser::parser::Parser;
+// use sqlparser::ast::{
+//     Statement, Query, SetExpr, SelectItem, TableWithJoins, TableFactor,
+//     Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
+//     Function as AstFunction, FunctionArg, FunctionArgExpr
+// };
 
 
 /// Entry point for Data Analyst

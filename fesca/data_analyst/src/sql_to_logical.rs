@@ -2,6 +2,7 @@
 * Fesca Data Analyst - SQL to Logical Plan Conversion
  */
 use anyhow::{Result, bail};
+use log::info;
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 use sqlparser::ast::{
@@ -9,7 +10,7 @@ use sqlparser::ast::{
     Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
     Function as AstFunction, FunctionArg, FunctionArgExpr
 };
-use crate::logical_plan::{LogicalPlan, Expr as LPExpr, BinaryOperator as LPBinOp, AggregateFunc};
+use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
 
 /// Parse SQL text into a single LogicalPlan
 pub fn sql_to_logical_plan(sql: &str) -> Result<LogicalPlan> {

@@ -86,7 +86,8 @@ pub fn compile_to_circuit(
                     BinaryOperator::Eq => {
                         // NOT(xor)
                         let x = b.xor(l, r);
-                        b.xor(x, b.one())
+                        let one = b.one();
+                        b.xor(x, one);
                     }
                 }
             }

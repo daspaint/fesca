@@ -1,26 +1,43 @@
-mod sql;
+mod logical_plan;
+mod sql_to_logical;
+mod logical_to_circuits;
+mod circuit_builder;
 
-use log::{error, info};
-use anyhow::Result;
-use std::process;
+use anyhow::{Result, bail};
+use log::info;
+// use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
+use logical_to_circuits::compile_to_circuit;
+use sql_to_logical::sql_to_logical_plan;
+
+// use sqlparser::dialect::GenericDialect;
+// use sqlparser::parser::Parser;
+// use sqlparser::ast::{
+//     Statement, Query, SetExpr, SelectItem, TableWithJoins, TableFactor,
+//     Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
+//     Function as AstFunction, FunctionArg, FunctionArgExpr
+// };
+
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    info!("Data Analyst: starting query processing");
+    // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
+    let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
+    let logical = sql_to_logical_plan(sql)?;
+    info!("LogicalPlan: {:#?}", logical);
 
-    // Example SQL; replace with CLI arg later
-    let sql_text = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D';";
+    // Build circuit for e.g. 5 rows × 2 columns. Improvement idea: read table size dynamically from existing dataset.
+    // Better: estimate how big is the row, and apply the same function to each row.
+    let circuit = compile_to_circuit(&logical, 5, 2);
+    info!("Circuit wire_count = {}", circuit.wire_count);
+    info!("Circuit gates count = {}", circuit.gates.len());
+    info!("Circuit outputs = {:?}", circuit.outputs);
 
-    match sql::parse_sql(sql_text) {
-        Ok(ast) => {
-            info!("Parsed AST:\n{:#?}", ast); // to do: the output is repeating itself. paste only either here or in the sql file
-            sql::extract_select(&ast);
-        }
-        Err(e) => {
-            error!("SQL parse error: {}", e);
-            process::exit(1);
-        }
+    //log the circuit structure
+    info!("Circuit gates: {:#?}", circuit.gates);
+
+    // Log each gate
+    for g in &circuit.gates {
+        info!("Gate: {:?}", g);
     }
-
     Ok(())
 }

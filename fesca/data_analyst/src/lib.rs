@@ -26,6 +26,7 @@ pub fn run() -> Result<()> {
     info!("LogicalPlan: {:#?}", logical);
 
     // Build circuit for e.g. 5 rows × 2 columns. Improvement idea: read table size dynamically from existing dataset.
+    // Better: estimate how big is the row, and apply the same function to each row.
     let circuit = compile_to_circuit(&logical, 5, 2);
     info!("Circuit wire_count = {}", circuit.wire_count);
     info!("Circuit gates count = {}", circuit.gates.len());

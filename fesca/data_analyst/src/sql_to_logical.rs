@@ -35,7 +35,7 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
         _ => bail!("Only simple SELECT is supported"),
     };
 
-    // 2) FROM → Scan
+    // 2) FROM -> Scan
     let twj: &TableWithJoins = select
         .from
         .get(0)
@@ -48,7 +48,7 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
     };
     let mut plan = LogicalPlan::Scan { table_name, alias };
 
-    // 3) WHERE → Filter
+    // 3) WHERE -> Filter
     if let Some(selection) = select.selection {
         let predicate = ast_expr_to_expr(selection)?;
         plan = LogicalPlan::Filter {
@@ -64,7 +64,7 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
     ));
 
     if has_agg {
-        // a) GROUP BY expressions
+        // a) GROUP BY expressions // sorting ?? maybe 9 CP criteria
         let group_exprs = select
             .group_by
             .iter()

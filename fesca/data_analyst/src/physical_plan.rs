@@ -87,7 +87,7 @@ pub fn compile_to_circuit(
                         // NOT(xor)
                         let x = b.xor(l, r);
                         let one = b.one();
-                        b.xor(x, one);
+                        b.xor(x, one)
                     }
                 }
             }

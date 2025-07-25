@@ -10,7 +10,7 @@ use sqlparser::ast::{
     Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
     Function as AstFunction, FunctionArg, FunctionArgExpr
 };
-use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
+use crate::logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
 
 /// Parse SQL text into a single LogicalPlan
 pub fn sql_to_logical_plan(sql: &str) -> Result<LogicalPlan> {

@@ -1,7 +1,7 @@
 use crate::circuit_builder::{CircuitBuilder, Circuit};
 use crate::logical_plan::{LogicalPlan, Expr as LPExpr, BinaryOperator};
 
-/// Compile a logical plan to a pure Boolean circuit using your custom builder.
+/// Compile a logical plan to a pure Boolean circuit using custom builder.
 pub fn compile_to_circuit(
     plan: &LogicalPlan,
     num_rows: usize,
@@ -9,7 +9,7 @@ pub fn compile_to_circuit(
 ) -> Circuit {
     let mut b = CircuitBuilder::new();
 
-    // Allocate input wires: table[row][col]
+    // Allocate input wires based on table size: table[row][col]
     let mut table: Vec<Vec<usize>> = vec![vec![0; num_columns]; num_rows];
     for r in 0..num_rows {
         for c in 0..num_columns {
@@ -52,7 +52,7 @@ pub fn compile_to_circuit(
             }
 
             LogicalPlan::Aggregate { input, aggr_exprs, .. } => {
-                // For boolean only, compute parity of first aggregate over all rows
+                // For boolean only, right now it only computes parity of first aggregate over all rows
                 // assume single expr
                 let mut bits = Vec::new();
                 for row in table.iter() {

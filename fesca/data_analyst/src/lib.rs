@@ -1,5 +1,3 @@
-// data_analyst/src/lib.rs
-
 mod logical_plan;
 mod physical_plan;
 mod circuit_builder;
@@ -20,12 +18,12 @@ use sqlparser::ast::{
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    // Parse SQL → LogicalPlan
+    // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
     let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
     let logical = sql_to_logical_plan(sql)?;
     info!("LogicalPlan: {:#?}", logical);
 
-    // Build circuit for e.g. 5 rows × 2 columns
+    // Build circuit for e.g. 5 rows × 2 columns. Improvement idea: read table size dynamically from existing dataset.
     let circuit = compile_to_circuit(&logical, 5, 2);
     info!("Circuit wire_count = {}", circuit.wire_count);
     info!("Circuit gates count = {}", circuit.gates.len());

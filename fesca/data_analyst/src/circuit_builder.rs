@@ -10,7 +10,7 @@ pub enum Gate {
     /// A constant wire: always 0 or 1
     Const { value: bool, output: usize },
     /// AND gate: output = left AND right
-    And { left: usize, right: usize, output: usize },
+    And { id: usize, left: usize, right: usize, output: usize },
     /// XOR gate: output = left XOR right
     Xor { left: usize, right: usize, output: usize },
 }
@@ -30,6 +30,7 @@ pub struct Circuit {
 #[derive(Debug)]
 pub struct CircuitBuilder {
     next_wire: usize,
+    next_gate_id: usize,
     gates: Vec<Gate>,
 }
 
@@ -38,6 +39,7 @@ impl CircuitBuilder {
     pub fn new() -> Self {
         CircuitBuilder {
             next_wire: 0,
+            next_gate_id: 0,
             gates: Vec::new(),
         }
     }
@@ -69,8 +71,10 @@ impl CircuitBuilder {
     /// AND gate
     pub fn and(&mut self, a: usize, b: usize) -> usize {
         let out = self.next_wire;
+        let gid = self.next_gate_id;
         self.next_wire += 1;
-        self.gates.push(Gate::And { left: a, right: b, output: out });
+        self.next_gate_id += 1;
+        self.gates.push(Gate::And { id: gid, left: a, right: b, output: out });
         out
     }
 
@@ -80,6 +84,11 @@ impl CircuitBuilder {
         self.next_wire += 1;
         self.gates.push(Gate::Xor { left: a, right: b, output: out });
         out
+    }
+
+    /// Return the next gate id that will be assigned (peek)
+    pub fn peek_next_gate_id(&self) -> usize {
+        self.next_gate_id
     }
 
     /// Finalize the circuit and specify which wires are outputs

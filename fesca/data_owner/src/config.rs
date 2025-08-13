@@ -69,12 +69,15 @@ pub fn load_data_owner_config(config_path: &str) -> Result<DataOwnerConfig> {
 /// - JSON file: Contains schema with same name as TBL but .json extension
 pub fn load_data_and_config(config_path: &str) -> Result<(Vec<Vec<String>>, TableSchema, DataOwnerConfig), Box<dyn std::error::Error>> {
     // Step 1: Load the unified configuration
-    let config = load_data_owner_config(config_path)?;
+    let config = load_data_owner_config(config_path)
+        .map_err(|e| format!("Failed to load configuration file '{}': {}", config_path, e))?;
 
     // Step 2: Load TBL data from the configured path
-    let mut file = File::open(&config.data_path)?;
+    let mut file = File::open(&config.data_path)
+        .map_err(|e| format!("Failed to open data file '{}': {}", config.data_path, e))?;
     let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+    file.read_to_string(&mut contents)
+        .map_err(|e| format!("Failed to read data file '{}': {}", config.data_path, e))?;
     
     let mut records = Vec::new();
     

@@ -76,15 +76,6 @@ fn encode_bool(value: &str) -> bool {
 /// # Returns
 /// * `BitVector` - 32-bit vector with bits in little-endian order
 /// 
-/// # Example
-/// ```
-/// let bits = encode_unsigned("5");
-/// // bits[0] = true  (bit 0: 1)
-/// // bits[1] = false (bit 1: 0)
-/// // bits[2] = true  (bit 2: 1)
-/// // bits[3..31] = false (remaining bits: 0)
-/// // This represents: 00000000000000000000000000000101 (binary for 5)
-/// ```
 /// 
 /// # Panics
 /// * If the value cannot be parsed as a u32
@@ -114,11 +105,6 @@ fn encode_unsigned(value: &str) -> BitVector {
 /// # Returns
 /// * `BitVector` - 64-bit vector representing the IEEE 754 encoding
 /// 
-/// # Example
-/// ```
-/// let bits = encode_float("3.14");
-/// // bits will contain 64 bits representing 3.14 in IEEE 754 format
-/// ```
 /// 
 /// # Panics
 /// * If the value cannot be parsed as an f64
@@ -151,12 +137,7 @@ fn encode_float(value: &str) -> BitVector {
 /// - **ASCII**: 7 bits per character, supports standard ASCII characters (0-127)
 /// - **UTF-8**: 8 bits per character, truncates Unicode to first 256 values
 /// 
-/// # Example
-/// ```
-/// let bits = encode_string("hello", 10, &Charset::Ascii);
-/// // Encodes "hello" + 5 null characters using 7 bits per character
-/// // Total: 10 characters × 7 bits = 70 bits
-/// ```
+///
 fn encode_string(value: &str, max_chars: usize, charset: &Charset) -> BitVector {
     let mut bv = BitVector::new();
     let chars: Vec<char> = value.chars().collect();

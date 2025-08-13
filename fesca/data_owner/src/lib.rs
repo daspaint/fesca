@@ -12,9 +12,9 @@ mod tests;
 use anyhow::Result;
 use log::{info, error};
 
-use crate::config::load_data_and_config;
+use crate::config::{load_data_and_config, DataOwnerConfig};
 use crate::encode::encode_value;
-use crate::types::{ColumnType, BinaryPartyData, BinaryRow, Charset};
+use crate::types::{ColumnType, BinaryPartyData, BinaryRow, Charset, TableSchema};
 use crate::sharing::share_bit_vector;
 use crate::grpc_client::ShareClient;
 
@@ -26,11 +26,12 @@ pub fn run_data_owner() -> Result<()> {
     rt.block_on(run_data_owner_async())
 }
 
-/// Internal async implementation of data owner functionality
-async fn run_data_owner_async() -> Result<()> {
+/// Generates 3-party secret shares from table data
+/// Returns the three binary party data structures, schema, and config needed for sending
+pub async fn run_table_sharing() -> Result<(BinaryPartyData, BinaryPartyData, BinaryPartyData, TableSchema, DataOwnerConfig)> {
 
     // Step 1: Load TBL data, schema, and configuration from unified config file
-    let config_path = "config_data_owner.json";
+    let config_path = "./data_owner/config_data_owner.json";
     
     let (records, schema, config) = match load_data_and_config(config_path) {
         Ok((records, schema, config)) => {
@@ -39,7 +40,7 @@ async fn run_data_owner_async() -> Result<()> {
             (records, schema, config)
         },
         Err(e) => {
-            error!("Error loading data, schema, or configuration: {e}");
+            error!("{}", e);
             std::process::exit(1);
         }
     };
@@ -158,15 +159,27 @@ async fn run_data_owner_async() -> Result<()> {
              binary_party0.rows.len(),
              binary_party0.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
     
-    // Step 8: Send individual party data to computing nodes via gRPC
+    Ok((binary_party0, binary_party1, binary_party2, schema, config))
+}
+
+/// Sends the 3 shares to computing nodes via gRPC
+pub async fn run_table_share_sending(
+    binary_party0: BinaryPartyData,
+    binary_party1: BinaryPartyData, 
+    binary_party2: BinaryPartyData,
+    schema: &TableSchema,
+    config: &DataOwnerConfig
+) -> Result<()> {
+    
+    // Send individual party data to computing nodes via gRPC
     info!("Sending shares to computing nodes...");
     
-    let client = ShareClient::new(config.data_owner);
+    let client = ShareClient::new(config.data_owner.clone());
     let node_urls = config.computing_nodes.as_array();
     
     // Send binary data to each computing node using the new binary format
     match client.send_binary_table_shares(
-        &schema,
+        schema,
         &[binary_party0.clone(), binary_party1.clone(), binary_party2.clone()],
         &node_urls,
     ).await {
@@ -190,6 +203,17 @@ async fn run_data_owner_async() -> Result<()> {
              binary_party1.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
     info!("  Party 2: {} rows, {} bytes per row", binary_party2.rows.len(),
              binary_party2.rows.get(0).map(|r| r.bitstring_a.len() + r.bitstring_b.len()).unwrap_or(0));
+    
+    Ok(())
+}
+
+/// Internal async implementation of data owner functionality
+async fn run_data_owner_async() -> Result<()> {
+    // Step 1: Generate the secret shares
+    let (binary_party0, binary_party1, binary_party2, schema, config) = run_table_sharing().await?;
+    
+    // Step 2: Send the shares to computing nodes
+    run_table_share_sending(binary_party0, binary_party1, binary_party2, &schema, &config).await?;
     
     Ok(())
 }

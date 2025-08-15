@@ -12,6 +12,7 @@ pub enum Expr {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    ColumnName(String), // resolve the column name at execution time, to avoid hardcoding column indices
 }
 
 /// Supported binary operators

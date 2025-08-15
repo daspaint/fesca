@@ -24,7 +24,7 @@ use local_exec::{Catalog, execute, ExecResult, Cell}; // TODO: comment or delete
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    let csv_path = "fesca/data_analyst/src/employees.csv";
+    let csv_path = "data_analyst/src/employees.csv";
     // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
     let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
 

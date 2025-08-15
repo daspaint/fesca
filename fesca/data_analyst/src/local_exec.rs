@@ -200,7 +200,7 @@ fn eval_expr(expr: &LPExpr, cols: &[String], row: &[Cell]) -> Result<Cell> {
             Ok(row[idx].clone())
         }
         LPExpr::Column(idx) => Ok(row[*idx].clone()), // if you still use it elsewhere
-        LPExpr::LiteralInt(v) => Ok(Cell::Int(*v)),
+        LPExpr::LiteralInt(v) => Ok(Cell::Int(*v as i64)),
         LPExpr::LiteralString(s) => Ok(Cell::Str(s.clone())),
         LPExpr::BinaryOp { op, left, right } => {
             match (eval_expr(left, cols, row)?, eval_expr(right, cols, row)?) {

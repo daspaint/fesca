@@ -119,12 +119,9 @@ fn from_query(query: Query) -> Result<LogicalPlan> {
 fn ast_expr_to_expr(ast: AstExpr) -> Result<LPExpr> {
     match ast {
         AstExpr::Identifier(ident) => {
-            let idx = match ident.value.as_str() {
-                "dept"   => 0,
-                "salary" => 1,
-                _ => bail!("Unknown column {}", ident.value),
-            };
-            Ok(LPExpr::Column(idx))
+            // before: hard-coded dept/salary -> indices
+            // now: leave as a name to be resolved at execution
+            Ok(LPExpr::ColumnName(ident.value))
         }
 
         AstExpr::Value(AstValue::Number(s, _)) => {

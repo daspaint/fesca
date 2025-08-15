@@ -52,6 +52,4 @@ pub enum AggregateFunc {
     Sum,
     Count,
     Avg,
-    Min, // delete later
-    Max, //delete later
 }

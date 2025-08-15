@@ -1,13 +1,17 @@
 mod logical_plan;
 mod sql_to_logical;
+
 mod logical_to_circuits;
 mod circuit_builder;
+
+mod local_exec;
 
 use anyhow::{Result, bail};
 use log::info;
 // use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
 use logical_to_circuits::compile_to_circuit;
 use sql_to_logical::sql_to_logical_plan;
+use local_exec::{Catalog, execute, ExecResult, Cell}; // TODO: comment or delete when sql optimizing is done
 
 // use sqlparser::dialect::GenericDialect;
 // use sqlparser::parser::Parser;
@@ -20,7 +24,7 @@ use sql_to_logical::sql_to_logical_plan;
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    let csv_path = "fesca/data_analyst/src/employees.csv"
+    let csv_path = "fesca/data_analyst/src/employees.csv";
     // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
     let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
 
@@ -50,7 +54,7 @@ pub fn run() -> Result<()> {
     // }
 
     // Execute the sql query on our local "dbms"
-    let result = execute(&plan, &cat)?;
+    let result = execute(&logical, &cat)?;
     info!("Execution complete");
 
     // Print result of sql query

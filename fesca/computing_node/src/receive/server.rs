@@ -18,6 +18,8 @@ use share_service::{
 };
 
 use super::storage::BinaryShareStorage;
+use crate::utils::correlated_randomness::ComputingNodeConfig;
+use crate::utils::key_exchange_server::create_key_exchange_service;
 
 /// gRPC service implementation for receiving table shares
 #[derive(Debug)]
@@ -82,7 +84,7 @@ impl ShareService for ShareReceiver {
     }
 }
 
-/// Start the share receiver server
+/// Start the share receiver server with key exchange service
 pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
     // Create storage directory if it doesn't exist
     if !Path::new(&storage_path).exists() {
@@ -93,11 +95,35 @@ pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port).parse()?;
     let share_receiver = ShareReceiver::new(storage_path.clone());
 
+    // Load configuration for key exchange service
+    let config = match ComputingNodeConfig::load() {
+        Ok(config) => config,
+        Err(e) => {
+            error!("Failed to load computing node configuration: {}", e);
+            // Create a default config if loading fails
+            ComputingNodeConfig {
+                computation_urls: crate::utils::correlated_randomness::ComputationUrls {
+                    url1: String::new(),
+                    url2: String::new(),
+                },
+                node_id: "default_node".to_string(),
+                storage_path: storage_path.clone(),
+                key_1: String::new(),
+                key_2: String::new(),
+            }
+        }
+    };
+
+    // Create key exchange service
+    let key_exchange_service = create_key_exchange_service(config);
+
     info!("Starting computing node gRPC server on {}", addr);
     info!("Binary shares will be stored in: {}", storage_path);
+    info!("Key exchange service enabled for correlated randomness");
 
     Server::builder()
         .add_service(ShareServiceServer::new(share_receiver))
+        .add_service(key_exchange_service)
         .serve(addr)
         .await?;
 

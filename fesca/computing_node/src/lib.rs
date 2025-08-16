@@ -1,5 +1,3 @@
-pub mod helpers;
-pub mod node;
 
 // Receive module components
 pub mod receive {
@@ -7,14 +5,22 @@ pub mod receive {
     pub mod storage;
 }
 
+// Utilities for correlated randomness
+pub mod utils {
+    pub mod correlated_randomness;
+    pub mod key_exchange_server;
+}
+
 use anyhow::Result;
 use std::env;
 use log::info;
 
 // Re-export main functionality
-pub use node::Node;
+
 pub use receive::server::{ShareReceiver, start_server};
 pub use receive::storage::BinaryShareStorage;
+pub use utils::correlated_randomness::{generate_keys, ComputingNodeConfig};
+pub use utils::key_exchange_server::create_key_exchange_service;
 
 /// Main entry point for computing node functionality.
 /// This function is called by the main FESCA entry point.

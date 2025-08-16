@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package key_exchange_service;
+
+// Service for correlated randomness key exchange between computing nodes
+service KeyExchangeService {
+    // Send a key to another computing node
+    rpc SendKey(SendKeyRequest) returns (SendKeyResponse);
+    
+    // Request a key from another computing node
+    rpc RequestKey(RequestKeyRequest) returns (RequestKeyResponse);
+}
+
+// Request message for sending a key to another node
+message SendKeyRequest {
+    string sender_node_id = 1;  // ID of the node sending the key
+    string key = 2;             // The 256-bit key as hex string
+    string key_type = 3;        // Type of key (e.g., "key_1", "key_2")
+}
+
+// Response message for key sending
+message SendKeyResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// Request message for requesting a key from another node
+message RequestKeyRequest {
+    string requester_node_id = 1;  // ID of the node requesting the key
+    string key_type = 2;           // Type of key requested (e.g., "key_1", "key_2")
+}
+
+// Response message for key request
+message RequestKeyResponse {
+    bool success = 1;
+    string message = 2;
+    string key = 3;  // The requested key (empty if not available)
+}

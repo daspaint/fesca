@@ -67,17 +67,17 @@ pub fn load_data_owner_config(config_path: &str) -> Result<DataOwnerConfig> {
 /// # File Structure Expected
 /// - TBL file: Contains the actual data rows with pipe-separated values
 /// - JSON file: Contains schema with same name as TBL but .json extension
-pub fn load_data_and_config(config_path: &str) -> Result<(Vec<Vec<String>>, TableSchema, DataOwnerConfig), Box<dyn std::error::Error>> {
+pub fn load_data_and_config(config_path: &str) -> Result<(Vec<Vec<String>>, TableSchema, DataOwnerConfig)> {
     // Step 1: Load the unified configuration
     let config = load_data_owner_config(config_path)
-        .map_err(|e| format!("Failed to load configuration file '{}': {}", config_path, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to load configuration file '{}': {}", config_path, e))?;
 
     // Step 2: Load TBL data from the configured path
     let mut file = File::open(&config.data_path)
-        .map_err(|e| format!("Failed to open data file '{}': {}", config.data_path, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to open data file '{}': {}", config.data_path, e))?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)
-        .map_err(|e| format!("Failed to read data file '{}': {}", config.data_path, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to read data file '{}': {}", config.data_path, e))?;
     
     let mut records = Vec::new();
     
@@ -102,10 +102,10 @@ pub fn load_data_and_config(config_path: &str) -> Result<(Vec<Vec<String>>, Tabl
 
     // Step 4: Load and parse the JSON schema file
     let schema_file = File::open(&schema_path)
-        .map_err(|e| format!("Failed to open schema file '{}': {}", schema_path.display(), e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to open schema file '{}': {}", schema_path.display(), e))?;
     
     let schema: TableSchema = serde_json::from_reader(schema_file)
-        .map_err(|e| format!("Failed to parse schema file '{}': {}", schema_path.display(), e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to parse schema file '{}': {}", schema_path.display(), e))?;
 
     // Step 5: Return data, schema, and config
     Ok((records, schema, config))

@@ -31,10 +31,9 @@ pub fn run_data_owner() -> Result<()> {
 pub async fn run_table_sharing() -> Result<(BinaryPartyData, BinaryPartyData, BinaryPartyData, TableSchema, DataOwnerConfig)> {
 
     // Step 1: Load TBL data, schema, and configuration from unified config file
-    let config_path = "config_data_owner.json";
+    let config_path = "data_owner/config_data_owner.json";
     
-    let (records, schema, config) = load_data_and_config(config_path)
-        .map_err(|e| anyhow::anyhow!("Failed to load data and config: {}", e))?;
+    let (records, schema, config) = load_data_and_config(config_path)?;
     
     info!("Loaded {} records and schema for table '{}'.", records.len(), schema.table_name);
     info!("Loaded data owner configuration");

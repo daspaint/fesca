@@ -3,10 +3,9 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
-use std::path::Path;
 use log::{info, warn, error};
-use tokio::time::{timeout, Duration};
-use tonic::{transport::Channel, Request};
+use tokio::time::Duration;
+use tonic::Request;
 
 // Include the generated protobuf code for key exchange
 pub mod key_exchange_service {
@@ -59,7 +58,7 @@ impl ComputingNodeConfig {
 
 /// Generate a 256-bit key as a hex string
 fn generate_256bit_key() -> String {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut key_bytes = [0u8; 32]; // 32 bytes = 256 bits
     rng.fill(&mut key_bytes);
     

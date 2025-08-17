@@ -13,7 +13,7 @@ pub mod utils {
 
 use anyhow::Result;
 use std::env;
-use log::info;
+use log::{info, warn};
 
 // Re-export main functionality
 

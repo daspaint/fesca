@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
-use log::{info, warn, error};
+use log::{info, warn};
 
 // Include the generated protobuf code
 pub mod key_exchange_service {

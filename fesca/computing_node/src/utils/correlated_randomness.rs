@@ -1,10 +1,8 @@
 use anyhow::Result;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::env;
 use std::fs;
 use log::{info, warn, error};
-use tokio::time::Duration;
 use tonic::Request;
 
 // Include the generated protobuf code for key exchange
@@ -99,11 +97,19 @@ pub async fn generate_keys() -> Result<()> {
     if !config.computation_urls.url1.is_empty() && !config.computation_urls.url2.is_empty() {
         info!("Starting key exchange...");
         
+        let mut send_success = false;
+        let mut receive_success = false;
+        
         // Send key_1 to url1
         info!("Sending key_1 to: {}", config.computation_urls.url1);
-        if let Err(e) = send_key_to_url(&config.key_1, &config.computation_urls.url1).await {
-            error!("Failed to send key_1 to url1: {}", e);
-            // Continue anyway, as this might be a timing issue
+        match send_key_to_url(&config.key_1, &config.computation_urls.url1).await {
+            Ok(()) => {
+                info!("Successfully sent key_1 to url1");
+                send_success = true;
+            }
+            Err(e) => {
+                error!("Failed to send key_1 to url1: {}", e);
+            }
         }
         
         // Receive key_2 from url2
@@ -113,15 +119,23 @@ pub async fn generate_keys() -> Result<()> {
                 config.key_2 = received_key;
                 config.save()?;
                 info!("Successfully received and saved key_2");
+                receive_success = true;
             }
             Err(e) => {
                 warn!("Failed to receive key_2 from url2: {}", e);
-                warn!("Key exchange will need to be completed later");
             }
         }
+        
+        // Return error if key exchange failed - this enables retries
+        if !send_success || !receive_success {
+            return Err(anyhow::anyhow!("Key exchange incomplete: send={}, receive={}", send_success, receive_success));
+        }
+        
+        info!("Key exchange completed successfully");
     } else {
         warn!("URLs not configured for key exchange. Skipping network operations.");
         warn!("Configure url1 and url2 in config to enable key exchange.");
+        return Err(anyhow::anyhow!("URLs not configured for key exchange"));
     }
     
     Ok(())
@@ -129,8 +143,12 @@ pub async fn generate_keys() -> Result<()> {
 
 /// Send a key to another computing node via gRPC
 async fn send_key_to_url(key: &str, url: &str) -> Result<()> {
-    let port = extract_port_from_url(url)?;
-    let target_url = format!("http://{}:{}", url, port);
+    // Format the URL properly for gRPC
+    let target_url = if url.starts_with("http://") || url.starts_with("https://") {
+        url.to_string()
+    } else {
+        format!("http://{}", url)
+    };
     
     info!("Connecting to gRPC service at: {}", target_url);
     
@@ -174,8 +192,12 @@ async fn send_key_to_url(key: &str, url: &str) -> Result<()> {
 
 /// Receive a key from another computing node via gRPC
 async fn receive_key_from_url(url: &str) -> Result<String> {
-    let port = extract_port_from_url(url)?;
-    let target_url = format!("http://{}:{}", url, port);
+    // Format the URL properly for gRPC
+    let target_url = if url.starts_with("http://") || url.starts_with("https://") {
+        url.to_string()
+    } else {
+        format!("http://{}", url)
+    };
     
     info!("Connecting to gRPC service at: {} to request key", target_url);
     
@@ -191,59 +213,31 @@ async fn receive_key_from_url(url: &str) -> Result<String> {
     // Get our node ID from config
     let config = ComputingNodeConfig::load()?;
     
-    // Try to request the key with retries
-    let max_retries = 10;
-    let retry_delay = Duration::from_secs(2);
+    // Try to request the key (single attempt - retries handled at higher level)
+    info!("Requesting key_2 from {}", url);
     
-    for attempt in 1..=max_retries {
-        info!("Requesting key_2 from {} (attempt {}/{})", url, attempt, max_retries);
-        
-        let request = Request::new(RequestKeyRequest {
-            requester_node_id: config.node_id.clone(),
-            key_type: "key_2".to_string(),
-        });
-        
-        match client.request_key(request).await {
-            Ok(response) => {
-                let resp = response.into_inner();
-                if resp.success && !resp.key.is_empty() {
-                    info!("Successfully received key_2 from {}", url);
-                    return Ok(resp.key);
-                } else if resp.success && resp.key.is_empty() {
-                    info!("Key not ready yet at {}, retrying in {:?}", url, retry_delay);
-                } else {
-                    warn!("Failed to get key from {}: {}", url, resp.message);
-                }
-            }
-            Err(e) => {
-                warn!("gRPC call failed when requesting key from {} (attempt {}): {}", url, attempt, e);
+    let request = Request::new(RequestKeyRequest {
+        requester_node_id: config.node_id.clone(),
+        key_type: "key_2".to_string(),
+    });
+    
+    match client.request_key(request).await {
+        Ok(response) => {
+            let resp = response.into_inner();
+            if resp.success && !resp.key.is_empty() {
+                info!("Successfully received key_2 from {}", url);
+                Ok(resp.key)
+            } else if resp.success && resp.key.is_empty() {
+                Err(anyhow::anyhow!("Key not ready yet at {}", url))
+            } else {
+                Err(anyhow::anyhow!("Failed to get key from {}: {}", url, resp.message))
             }
         }
-        
-        if attempt < max_retries {
-            tokio::time::sleep(retry_delay).await;
+        Err(e) => {
+            Err(anyhow::anyhow!("gRPC call failed when requesting key from {}: {}", url, e))
         }
     }
-    
-    Err(anyhow::anyhow!("Failed to receive key_2 from {} after {} attempts", url, max_retries))
 }
 
-/// Extract port from URL, defaulting to 50051 if not specified
-fn extract_port_from_url(url: &str) -> Result<u16> {
-    // Simple port extraction - in practice you might want more robust URL parsing
-    if url.contains(':') {
-        let parts: Vec<&str> = url.split(':').collect();
-        if parts.len() >= 2 {
-            let port_str = parts[parts.len() - 1];
-            return Ok(port_str.parse()?);
-        }
-    }
-    
-    // Default to the same port as the gRPC server
-    let default_port = env::var("GRPC_PORT")
-        .unwrap_or_else(|_| "50051".to_string())
-        .parse::<u16>()
-        .unwrap_or(50051);
-    
-    Ok(default_port)
-}
+
+

@@ -1,5 +1,3 @@
-pub mod helpers;
-pub mod node;
 
 // Receive module components
 pub mod receive {
@@ -7,14 +5,22 @@ pub mod receive {
     pub mod storage;
 }
 
+// Utilities for correlated randomness
+pub mod utils {
+    pub mod correlated_randomness;
+    pub mod key_exchange_server;
+}
+
 use anyhow::Result;
 use std::env;
-use log::info;
+use log::{info, warn};
 
 // Re-export main functionality
-pub use node::Node;
+
 pub use receive::server::{ShareReceiver, start_server};
 pub use receive::storage::BinaryShareStorage;
+pub use utils::correlated_randomness::{generate_keys, ComputingNodeConfig};
+pub use utils::key_exchange_server::create_key_exchange_service;
 
 /// Main entry point for computing node functionality.
 /// This function is called by the main FESCA entry point.
@@ -43,5 +49,45 @@ async fn run_computing_node_async() -> Result<()> {
     info!("Port: {}", port);
     info!("Storage: {}", storage_path);
     
-    start_server(port, storage_path).await
+    // Start the server in a background task
+    let server_task = tokio::spawn(start_server(port, storage_path.clone()));
+    
+    // Give the server a moment to start up
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    
+    // Attempt key generation with retries after server startup
+    info!("Attempting correlated randomness key generation...");
+    
+    // Try key generation with retries since nodes start manually with delays
+    let max_retries = 5;
+    let mut key_generation_success = false;
+    
+    for attempt in 1..=max_retries {
+        info!("Key generation attempt {}/{}", attempt, max_retries);
+        
+        match generate_keys().await {
+            Ok(()) => {
+                info!("Key generation completed successfully!");
+                key_generation_success = true;
+                break;
+            }
+            Err(e) => {
+                warn!("Key generation attempt {} failed: {}", attempt, e);
+                if attempt < max_retries {
+                    let delay = 10; // Wait 10 seconds between attempts
+                    info!("Retrying in {} seconds... (other nodes might still be starting)", delay);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
+                }
+            }
+        }
+    }
+    
+    if !key_generation_success {
+        warn!("Key generation failed after {} attempts", max_retries);
+        info!("This is normal if other computing nodes aren't started yet");
+        info!("Key generation will be retried when other nodes come online");
+    }
+    
+    // Wait for the server to complete
+    server_task.await?
 }

@@ -1,12 +1,12 @@
 
-// Receive module components
-pub mod receive {
+// Receiving shares module components
+pub mod receiving_shares {
     pub mod server;
     pub mod storage;
 }
 
-// Utilities for correlated randomness
-pub mod utils {
+// Key exchange utilities
+pub mod key_exchange {
     pub mod correlated_randomness;
     pub mod key_exchange_server;
 }
@@ -17,10 +17,10 @@ use log::{info, warn};
 
 // Re-export main functionality
 
-pub use receive::server::{ShareReceiver, start_server};
-pub use receive::storage::BinaryShareStorage;
-pub use utils::correlated_randomness::{generate_keys, ComputingNodeConfig};
-pub use utils::key_exchange_server::create_key_exchange_service;
+pub use receiving_shares::server::{ShareReceiver, start_server};
+pub use receiving_shares::storage::BinaryShareStorage;
+pub use key_exchange::correlated_randomness::{generate_keys, ComputingNodeConfig};
+pub use key_exchange::key_exchange_server::create_key_exchange_service;
 
 /// Main entry point for computing node functionality.
 /// This function is called by the main FESCA entry point.

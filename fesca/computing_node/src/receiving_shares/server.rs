@@ -18,8 +18,8 @@ use share_service::{
 };
 
 use super::storage::BinaryShareStorage;
-use crate::utils::correlated_randomness::ComputingNodeConfig;
-use crate::utils::key_exchange_server::create_key_exchange_service;
+use crate::key_exchange::correlated_randomness::ComputingNodeConfig;
+use crate::key_exchange::key_exchange_server::create_key_exchange_service;
 
 /// gRPC service implementation for receiving table shares
 #[derive(Debug)]
@@ -102,7 +102,7 @@ pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
             error!("Failed to load computing node configuration: {}", e);
             // Create a default config if loading fails
             ComputingNodeConfig {
-                computation_urls: crate::utils::correlated_randomness::ComputationUrls {
+                computation_urls: crate::key_exchange::correlated_randomness::ComputationUrls {
                     url1: String::new(),
                     url2: String::new(),
                 },

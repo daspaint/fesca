@@ -36,8 +36,9 @@ pub fn run() -> Result<()> {
     info!("Circuit gates: {:#?}", circuit.gates);
 
     // Log each gate
-    for g in &circuit.gates {
-        info!("Gate: {:?}", g);
-    }
+    // for g in &circuit.gates {
+    //     info!("Gate: {:?}", g);
+    // }
+    info!("Circuit: {:#?}", circuit);
     Ok(())
 }

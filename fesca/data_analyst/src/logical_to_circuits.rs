@@ -1,6 +1,16 @@
 use crate::circuit_builder::{CircuitBuilder, Circuit};
 use crate::logical_plan::{LogicalPlan, Expr as LPExpr, BinaryOperator};
 
+/// Extract table name from logical plan by finding the first Scan node
+fn extract_table_name(plan: &LogicalPlan) -> String {
+    match plan {
+        LogicalPlan::Scan { table_name, .. } => table_name.clone(),
+        LogicalPlan::Filter { input, .. } => extract_table_name(input),
+        LogicalPlan::Project { input, .. } => extract_table_name(input),
+        LogicalPlan::Aggregate { input, .. } => extract_table_name(input),
+    }
+}
+
 /// Compile a logical plan to a pure Boolean circuit using custom builder.
 pub fn compile_to_circuit(
     plan: &LogicalPlan,
@@ -8,6 +18,9 @@ pub fn compile_to_circuit(
     num_columns: usize,
 ) -> Circuit {
     let mut b = CircuitBuilder::new();
+
+    // Extract table name from the logical plan
+    let table_name = extract_table_name(plan);
 
     // Allocate input wires based on table size: table[row][col]
     let mut table: Vec<Vec<usize>> = vec![vec![0; num_columns]; num_rows];
@@ -96,5 +109,5 @@ pub fn compile_to_circuit(
     }
 
     let outputs = lower(&mut b, plan, &table);
-    b.finish_with_outputs(outputs)
+    b.finish_with_outputs(outputs, table_name)
 }

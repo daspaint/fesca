@@ -1,0 +1,19 @@
+{
+  "table_name": "customers",
+  "table_id": 1,
+  "row_count": 241,
+  "columns": [
+    { "name": "index",           "type_hint": "UnsignedInt" },
+    { "name": "customer_id",     "type_hint": { "String": { "max_chars": 20, "charset": "Ascii" } } },
+    { "name": "first_name",      "type_hint": { "String": { "max_chars": 50, "charset": "Ascii" } } },
+    { "name": "last_name",       "type_hint": { "String": { "max_chars": 50, "charset": "Ascii" } } },
+    { "name": "company",         "type_hint": { "String": { "max_chars": 100, "charset": "Ascii" } } },
+    { "name": "city",            "type_hint": { "String": { "max_chars": 100, "charset": "Ascii" } } },
+    { "name": "country",         "type_hint": { "String": { "max_chars": 100, "charset": "Ascii" } } },
+    { "name": "phone_1",         "type_hint": { "String": { "max_chars": 50, "charset": "Ascii" } } },
+    { "name": "phone_2",         "type_hint": { "String": { "max_chars": 50, "charset": "Ascii" } } },
+    { "name": "email",           "type_hint": { "String": { "max_chars": 100, "charset": "Ascii" } } },
+    { "name": "subscription_date", "type_hint": { "String": { "max_chars": 10, "charset": "Ascii" } } },
+    { "name": "website",         "type_hint": { "String": { "max_chars": 200, "charset": "Ascii" } } }
+  ]
+}

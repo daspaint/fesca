@@ -30,16 +30,16 @@ pub fn run() -> Result<()> {
     /*
     Fully working code for local plaintext SQL engine
      */
-    // let csv_path = "data_analyst/src/employees.csv";
-    // // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
-    // let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
+    let csv_path = "computing_node/src/apply_query/csv_data_test/employees.csv";
+    // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
+    let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
 
     // info!("Registering CSV as a table...");
     // let mut cat = Catalog::new();
     // cat.register_csv("employees", csv_path)?;
 
-    // let logical = sql_to_logical_plan(sql)?;
-    // info!("LogicalPlan: {:#?}", logical);
+    let logical = sql_to_logical_plan(sql)?;
+    info!("LogicalPlan: {:#?}", logical);
 
     /*
     Fully working code for translating phPlan into circuit, uncomment when sql optimizing is done
@@ -70,12 +70,12 @@ pub fn run() -> Result<()> {
 /*
 Displays the test table data in a human-readable format.
  */
-fn display_row(row: &[Cell]) -> String {
-    row.iter()
-        .map(|c| match c {
-            Cell::Int(v) => v.to_string(),
-            Cell::Str(s) => s.clone(),
-        })
-        .collect::<Vec<_>>()
-        .join(",")
-}
+// fn display_row(row: &[Cell]) -> String {
+//     row.iter()
+//         .map(|c| match c {
+//             Cell::Int(v) => v.to_string(),
+//             Cell::Str(s) => s.clone(),
+//         })
+//         .collect::<Vec<_>>()
+//         .join(",")
+// }

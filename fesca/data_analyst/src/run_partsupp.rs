@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fs::{read_dir, File};
 use std::io::Read;
 use std::path::PathBuf;
+use log::{info, error};
 
 use crate::row_circuit::{ build_row_update_circuit, run_row_circuit_over_rows };
 

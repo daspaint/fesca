@@ -58,26 +58,7 @@ pub fn run() -> Result<()> {
     //     info!("Gate: {:?}", g);
     // }
 
-    let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("data_analyst").join("src").join("binary_data").join("owner_001").join("partsupp");
-    let sql = "SELECT AVG(supply_cost) FROM partsupp WHERE part_key = 1";
-    binary_exec::execute_on_binary_folder(folder, sql)?;
-
-    // Execute the sql query on our local "dbms"
-    let result = execute(&logical, &cat)?;
-    info!("Execution complete");
-
-    // Print result of sql query
-    match result {
-        ExecResult::Row(cells) => {
-            println!("{}", display_row(&cells));
-        }
-        ExecResult::Rows { columns, rows } => {
-            println!("{}", columns.join(","));
-            for r in rows {
-                println!("{}", display_row(&r));
-            }
-        }
-    }
+    run_partsupp::run_partsupp(None, None)?;
 
     Ok(())
 }

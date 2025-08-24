@@ -108,7 +108,7 @@ fn bits_le_to_u128(bits: &[bool]) -> u128 {
 pub fn run_partsupp(folder: Option<PathBuf>, sql: Option<&str>) -> Result<()> {
     // default folder relative to crate root
     let default_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("data_analyst").join("src").join("binary_data").join("owner_001").join("partsupp");
+        .join("src").join("binary_data").join("owner_001").join("partsupp");
     let folder = folder.unwrap_or(default_folder);
 
     let sql = match sql {
@@ -120,8 +120,8 @@ pub fn run_partsupp(folder: Option<PathBuf>, sql: Option<&str>) -> Result<()> {
         }
     };
 
-    println!("run_partsupp: folder = {}", folder.display());
-    println!("run_partsupp: SQL = {}", sql);
+    info!("Reading binary table at folder = {}", folder.display());
+    info!("Processing SQL query = {}", sql);
 
     // locate schema.json and binary blob
     let mut schema_file: Option<PathBuf> = None;
@@ -162,7 +162,7 @@ pub fn run_partsupp(folder: Option<PathBuf>, sql: Option<&str>) -> Result<()> {
     let mut blob = Vec::new();
     File::open(&bin_file).with_context(|| format!("opening binary {:?}", bin_file))?.read_to_end(&mut blob)?;
     if blob.len() < row_count * row_size {
-        eprintln!("warning: blob length {} smaller than expected {} (row_count*row_size). continuing best-effort", blob.len(), row_count * row_size);
+        error!("warning: blob length {} smaller than expected {} (row_count*row_size). continuing best-effort", blob.len(), row_count * row_size);
     }
 
     // reconstruct rows as Vec<HashMap<String, CellValue>>
@@ -170,7 +170,7 @@ pub fn run_partsupp(folder: Option<PathBuf>, sql: Option<&str>) -> Result<()> {
     for r in 0..row_count {
         let base = r * row_size;
         if base + row_size > blob.len() {
-            eprintln!("stopping early: row {} would go past blob end", r);
+            error!("stopping early: row {} would go past blob end", r);
             break;
         }
         let mut offset = 0usize;
@@ -204,7 +204,7 @@ pub fn run_partsupp(folder: Option<PathBuf>, sql: Option<&str>) -> Result<()> {
         rows.push(rowmap);
     }
 
-    println!("Reconstructed {} rows from {:?}", rows.len(), bin_file);
+    info!("Reconstructed {} rows from {:?}", rows.len(), bin_file);
 
     // parse SQL into logical plan
     let plan = crate::sql_to_logical::sql_to_logical_plan(&sql)
@@ -271,7 +271,7 @@ pub fn run_partsupp(folder: Option<PathBuf>, sql: Option<&str>) -> Result<()> {
         _ => anyhow::bail!("unsupported logical plan: expected Aggregate(...)"),
     };
 
-    println!("Plan -> AVG column: {}, predicate: {} == {:?}", aggr_col_name, pred_col_name, pred_literal_expr);
+    info!("Plan -> AVG column: {}, predicate: {} == {:?}", aggr_col_name, pred_col_name, pred_literal_expr);
 
     // decide bit widths for sum/salary/count
     let SUM_W = 96usize;
@@ -340,7 +340,7 @@ pub fn run_partsupp(folder: Option<PathBuf>, sql: Option<&str>) -> Result<()> {
         row_bit_maps.push(m);
     }
 
-    println!("Prepared {} row bit-maps", row_bit_maps.len());
+    info!("Prepared {} row bit-maps", row_bit_maps.len());
 
     // build template circuit once
     let spec = build_row_update_circuit(SUM_W, SAL_W, CNT_W, const_bits.len());

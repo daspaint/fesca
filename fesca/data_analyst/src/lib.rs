@@ -7,6 +7,7 @@ mod circuit_builder;
 mod local_exec;
 mod binary_exec;
 mod row_circuit;
+mod run_partsupp;
 
 use anyhow::{Result, bail};
 use log::info;

@@ -35,6 +35,10 @@ pub struct Catalog {
 impl Catalog {
     pub fn new() -> Self { Self { tables: HashMap::new() } }
 
+    pub fn insert_table(&mut self, table: TableData) {
+        self.tables.insert(table.name.clone(), table);
+    }
+
     /// Register a CSV file as a table (header required).
     pub fn register_csv<P: AsRef<Path>>(&mut self, table_name: &str, path: P) -> Result<()> {
         let mut rdr = csv::ReaderBuilder::new()

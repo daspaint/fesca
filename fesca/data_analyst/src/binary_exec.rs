@@ -144,7 +144,7 @@ pub fn execute_on_binary_folder<P: AsRef<Path>>(folder: P, sql: &str) -> Result<
     let mut catalog = crate::local_exec::Catalog::new();
     let table_name = folder.file_name().and_then(|s| s.to_str()).unwrap_or("table").to_string();
     let t = crate::local_exec::TableData { name: table_name.clone(), columns: col_names.clone(), rows: rows.clone() };
-    catalog.tables.insert(table_name.clone(), t);
+    catalog.insert_table(t);
 
     // 5) build logical plan from SQL
     let plan = crate::sql_to_logical::sql_to_logical_plan(sql)

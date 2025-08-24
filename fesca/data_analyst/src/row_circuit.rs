@@ -193,7 +193,10 @@ pub fn build_row_update_circuit(sum_width: usize, salary_width: usize, count_wid
     for i in 0..count_width {
         if i == 0 { mask_vec.push(mask); } else { mask_vec.push(b.const_wire(false)); }
     }
-    let (count_out, _carry_out_count) = b.ripple_adder(&count_inputs, &mask_vec, b.const_wire(false));
+
+    let zero_wire_for_count = b.const_wire(false);
+    let (count_out, _carry_out_count) = b.ripple_adder(&count_inputs, &mask_vec, zero_wire_for_count);
+
 
     // Outputs are sum_out and count_out
     let mut outputs = Vec::new();
@@ -208,7 +211,7 @@ pub fn build_row_update_circuit(sum_width: usize, salary_width: usize, count_wid
     input_map.insert("dept".to_string(), dept_inputs.clone());
     input_map.insert("const_dept".to_string(), const_dept_inputs.clone());
 
-    let mut single_inputs = HashMap::new(); // none here
+    let single_inputs = HashMap::new(); // none here
 
     let mut outputs_map = HashMap::new();
     outputs_map.insert("sum_out".to_string(), sum_out.clone());

@@ -5,6 +5,8 @@ mod logical_to_circuits;
 mod circuit_builder;
 
 mod local_exec;
+mod binary_exec;
+mod row_circuit;
 
 use anyhow::{Result, bail};
 use log::info;
@@ -24,19 +26,22 @@ use local_exec::{Catalog, execute, ExecResult, Cell}; // TODO: comment or delete
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    let csv_path = "data_analyst/src/employees.csv";
-    // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
-    let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
+    /*
+    Fully working code for local plaintext SQL engine
+     */
+    // let csv_path = "data_analyst/src/employees.csv";
+    // // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
+    // let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
 
-    info!("Registering CSV as a table...");
-    let mut cat = Catalog::new();
-    cat.register_csv("employees", csv_path)?;
+    // info!("Registering CSV as a table...");
+    // let mut cat = Catalog::new();
+    // cat.register_csv("employees", csv_path)?;
 
-    let logical = sql_to_logical_plan(sql)?;
-    info!("LogicalPlan: {:#?}", logical);
+    // let logical = sql_to_logical_plan(sql)?;
+    // info!("LogicalPlan: {:#?}", logical);
 
     /*
-    Fully working code, uncomment when sql optimizing is done
+    Fully working code for translating phPlan into circuit, uncomment when sql optimizing is done
      */
     // // Build circuit for e.g. 5 rows × 2 columns. Improvement idea: read table size dynamically from existing dataset.
     // // Better: estimate how big is the row, and apply the same function to each row.
@@ -52,6 +57,10 @@ pub fn run() -> Result<()> {
     // for g in &circuit.gates {
     //     info!("Gate: {:?}", g);
     // }
+
+    let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("data_analyst").join("src").join("binary_data").join("owner_001").join("partsupp");
+    let sql = "SELECT AVG(supply_cost) FROM partsupp WHERE part_key = 1";
+    binary_exec::execute_on_binary_folder(folder, sql)?;
 
     // Execute the sql query on our local "dbms"
     let result = execute(&logical, &cat)?;

@@ -63,7 +63,7 @@ pub fn run() -> Result<()> {
     Runs the binary executor on a test table, not 100% working yet
      */
     run_partsupp::run_partsupp(None, None)?;
-
+  
     Ok(())
 }
 

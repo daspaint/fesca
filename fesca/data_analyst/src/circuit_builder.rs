@@ -24,6 +24,8 @@ pub struct Circuit {
     pub gates: Vec<Gate>,
     /// Wires designated as public outputs
     pub outputs: Vec<usize>,
+    /// The table name this circuit operates on
+    pub table_name: String,
 }
 
 /// Builder for incrementally constructing a Boolean circuit
@@ -92,11 +94,12 @@ impl CircuitBuilder {
     }
 
     /// Finalize the circuit and specify which wires are outputs
-    pub fn finish_with_outputs(mut self, outputs: Vec<usize>) -> Circuit {
+    pub fn finish_with_outputs(mut self, outputs: Vec<usize>, table_name: String) -> Circuit {
         Circuit {
             wire_count: self.next_wire,
             gates: self.gates,
             outputs,
+            table_name,
         }
     }
 }

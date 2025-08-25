@@ -12,6 +12,7 @@ pub enum Expr {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    ColumnName(String), // resolve the column name at execution time, to avoid hardcoding column indices
 }
 
 /// Supported binary operators
@@ -51,6 +52,4 @@ pub enum AggregateFunc {
     Sum,
     Count,
     Avg,
-    Min, // delete later
-    Max, //delete later
 }

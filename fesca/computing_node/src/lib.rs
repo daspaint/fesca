@@ -3,6 +3,14 @@ pub mod receiving_shares {
     pub mod storage;
 }
 
+pub mod find_table {
+    tonic::include_proto!("find_table");
+}
+
+pub mod share_service {
+    tonic::include_proto!("share_service");
+}
+
 pub mod grpc_server;
 // Find table server implementation
 pub mod find_table_service;

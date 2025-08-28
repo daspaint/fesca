@@ -8,6 +8,10 @@ use anyhow::Result;
 use log::info;
 use parser::extract_execution_plan;
 
+pub mod find_table {
+    tonic::include_proto!("find_table");
+}
+
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
     // Parse SQL -> ExecutionPlan. Improvement idea: accept queries from CLI.

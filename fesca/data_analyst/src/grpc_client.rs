@@ -4,9 +4,6 @@ use std::path::PathBuf;
 use crate::table_schema::Schema;
 use serde::Deserialize;
 
-pub mod find_table {
-    tonic::include_proto!("find_table");
-}
 
 #[derive(Debug, Clone)]
 pub struct TableInfo {
@@ -119,7 +116,7 @@ fn run_grpc_find_table(node_urls: &[String], table_name: &str, column_name: &str
             log::info!("Attempting FindTable RPC to {}", url);
 
             // Use the generated find_table client (data_analyst crate compiled the proto into crate::grpc_server::find_table)
-            let client_res = crate::grpc_client::find_table::table_lookup_client::TableLookupClient::connect(url.clone()).await;
+            let client_res = crate::find_table::table_lookup_client::TableLookupClient::connect(url.clone()).await;
             let mut client = match client_res {
                 Ok(c) => c,
                 Err(e) => {
@@ -128,7 +125,7 @@ fn run_grpc_find_table(node_urls: &[String], table_name: &str, column_name: &str
                 }
             };
 
-            let req = tonic::Request::new(crate::grpc_client::find_table::FindTableRequest {
+            let req = tonic::Request::new(crate::find_table::FindTableRequest {
                 table_name: table_name.to_string(),
                 column_name: column_name.to_string(),
             });

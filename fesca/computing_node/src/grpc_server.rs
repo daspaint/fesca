@@ -8,25 +8,17 @@ use std::path::Path;
 use tonic::{transport::Server};
 use log::{info, error};
 
-pub mod find_table {
-    tonic::include_proto!("find_table");
-}
-
-pub mod share_service {
-    tonic::include_proto!("share_service");
-}
-
 // Use the proto modules generated at crate root (lib.rs includes them)
-// use crate::grpc_server::share_service;
-use crate::grpc_server::share_service::share_service_server::{ShareService, ShareServiceServer};
-use crate::grpc_server::share_service::{SendTableSharesRequest, SendTableSharesResponse};
+// use crate::share_service;
+use crate::share_service::share_service_server::{ShareService, ShareServiceServer};
+use crate::share_service::{SendTableSharesRequest, SendTableSharesResponse};
 
 // key-exchange service helper
 use crate::key_exchange::key_exchange_server::create_key_exchange_service;
 
 // new find-table server impl (implementation file placed at src/find_table_service.rs)
 use crate::find_table_service::TableLookupService;
-use crate::grpc_server::find_table::table_lookup_server::TableLookupServer;
+use crate::find_table::table_lookup_server::TableLookupServer;
 
 // Storage module (kept under receiving_shares::storage)
 use crate::receiving_shares::storage::BinaryShareStorage;

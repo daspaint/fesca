@@ -19,7 +19,7 @@ pub fn run() -> Result<()> {
 
     // extract_execution_plan now returns (table_name, column_name, agg_name)
     let (table_name, column_name, agg_name) = extract_execution_plan(sql)?;
-    info!("Execution details -> table: {}, column: {}, agg: {}", table_name, column_name, agg_name);
+    info!("Parsed query -> table: {}, column: {}, agg: {}", table_name, column_name, agg_name);
 
     // Validate that the requested table/column exist via gRPC call to computing node (filesystem stub)
     let table_info = grpc_client::find_table(&table_name, &column_name)

@@ -77,7 +77,5 @@ pub fn extract_execution_plan(sql: &str) -> Result<(String, String, String)> {
     let column_name = column_name.context("Couldn't extract column name from query")?;
     let agg_name = agg_name.context("Couldn't extract aggregation function from query")?;
 
-    info!("Parsed query -> table: {}, column: {}, agg: {}", table_name, column_name, agg_name);
-
     Ok((table_name, column_name, agg_name))
 }

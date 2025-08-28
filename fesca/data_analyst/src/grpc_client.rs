@@ -31,7 +31,7 @@ struct DataOwnerConfig {
 pub fn find_table(table_name: &str, column_name: &str) -> Result<TableInfo> {
     // Try gRPC discovery first using the Data Owner config file
     let config_path = std::env::var("DATA_OWNER_CONFIG")
-        .unwrap_or_else(|_| "../data_owner/config_data_owner.json".into());
+        .unwrap_or_else(|_| "data_owner/config_data_owner.json".into());
 
     let mut tried_grpc = false;
     if let Ok(cfg_text) = fs::read_to_string(&config_path) {

@@ -1,3 +1,5 @@
+tonic::include_proto!("find_table");
+
 mod parser;
 // mod logical_to_circuits;
 mod circuit_builder;

@@ -1,9 +1,15 @@
+// Include generated proto modules
+tonic::include_proto!("share_service"); 
+tonic::include_proto!("find_table"); 
 
 // Receiving shares module components
 pub mod receiving_shares {
-    pub mod server;
     pub mod storage;
 }
+
+pub mod grpc_server;
+// Find table server implementation
+pub mod find_table_service;
 
 // Key exchange utilities
 pub mod key_exchange {
@@ -17,7 +23,7 @@ use log::{info, warn};
 
 // Re-export main functionality
 
-pub use receiving_shares::server::{ShareReceiver, start_server};
+pub use grpc_server::{ShareReceiver, start_server};
 pub use receiving_shares::storage::BinaryShareStorage;
 pub use key_exchange::correlated_randomness::{generate_keys, ComputingNodeConfig};
 pub use key_exchange::key_exchange_server::create_key_exchange_service;

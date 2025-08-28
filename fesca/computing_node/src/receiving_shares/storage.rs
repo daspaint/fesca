@@ -6,7 +6,7 @@ use anyhow::Result;
 use std::fs;
 use std::io::Write;
 
-use super::server::share_service;
+use crate::share_service;
 
 /// Handles storage of binary share data
 #[derive(Debug)]

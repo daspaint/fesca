@@ -16,10 +16,6 @@ pub mod share_service {
     tonic::include_proto!("share_service");
 }
 
-pub mod key_exchange {
-    tonic::include_proto!("key_exchange");
-}
-
 // Use the proto modules generated at crate root (lib.rs includes them)
 use crate::share_service;
 use crate::share_service::share_service_server::{ShareService, ShareServiceServer};

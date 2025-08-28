@@ -128,7 +128,7 @@ fn run_grpc_find_table(node_urls: &[String], table_name: &str, column_name: &str
                 }
             };
 
-            let req = tonic::Request::new(crate::find_table::FindTableRequest {
+            let req = tonic::Request::new(crate::grpc_client::find_table::FindTableRequest {
                 table_name: table_name.to_string(),
                 column_name: column_name.to_string(),
             });

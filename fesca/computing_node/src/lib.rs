@@ -1,8 +1,3 @@
-// Include generated proto modules
-tonic::include_proto!("share_service"); 
-tonic::include_proto!("find_table");   
-tonic::include_proto!("key_exchange_service");
-
 // Receiving shares module components
 pub mod receiving_shares {
     pub mod storage;

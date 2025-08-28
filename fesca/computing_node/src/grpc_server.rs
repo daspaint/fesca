@@ -3,13 +3,22 @@
 gRPC server implementation for receiving table shares from data owners and communicating
 with data analyst.
 */
-tonic::include_proto!("share_service"); 
-tonic::include_proto!("find_table"); 
-
 use anyhow::Result;
 use std::path::Path;
 use tonic::{transport::Server};
 use log::{info, error};
+
+pub mod find_table {
+    tonic::include_proto!("find_table");
+}
+
+pub mod share_service {
+    tonic::include_proto!("share_service");
+}
+
+pub mod key_exchange {
+    tonic::include_proto!("key_exchange");
+}
 
 // Use the proto modules generated at crate root (lib.rs includes them)
 use crate::share_service;

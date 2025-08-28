@@ -1,10 +1,12 @@
-tonic::include_proto!("find_table");  
-
 use anyhow::{bail, Context, Result};
 use std::fs;
 use std::path::PathBuf;
 use crate::table_schema::Schema;
 use serde::Deserialize;
+
+pub mod find_table {
+    tonic::include_proto!("find_table");
+}
 
 #[derive(Debug, Clone)]
 pub struct TableInfo {

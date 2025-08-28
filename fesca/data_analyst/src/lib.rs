@@ -2,6 +2,7 @@ mod parser;
 // mod logical_to_circuits;
 mod circuit_builder;
 mod grpc_client;
+pub mod table_schema;
 
 use anyhow::Result;
 use log::info;

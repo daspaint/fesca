@@ -1,81 +1,30 @@
-mod logical_plan;
-mod sql_to_logical;
-
+mod parser;
 mod logical_to_circuits;
 mod circuit_builder;
+mod grpc_client;
 
-mod local_exec;
-mod binary_exec;
-mod row_circuit;
-mod run_partsupp;
-
-use anyhow::{Result, bail};
+use anyhow::Result;
 use log::info;
-// use logical_plan::{Expr as LPExpr, BinaryOperator, LogicalPlan, AggregateFunc};
-use logical_to_circuits::compile_to_circuit;
-use sql_to_logical::sql_to_logical_plan;
-use local_exec::{Catalog, execute, ExecResult, Cell}; // TODO: comment or delete when sql optimizing is done
-
-// use sqlparser::dialect::GenericDialect;
-// use sqlparser::parser::Parser;
-// use sqlparser::ast::{
-//     Statement, Query, SetExpr, SelectItem, TableWithJoins, TableFactor,
-//     Expr as AstExpr, Value as AstValue, BinaryOperator as AstOp,
-//     Function as AstFunction, FunctionArg, FunctionArgExpr
-// };
-
+use parser::extract_execution_plan;
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    /*
-    Fully working code for local plaintext SQL engine
-     */
-    // let csv_path = "computing_node/src/apply_query/csv_data_test/employees.csv";
-    // // Parse SQL -> LogicalPlan. Returns AST. Improvement idea: accept queries from CLI.
-    // let sql = "SELECT AVG(salary) FROM employees WHERE dept = 'R&D'";
+    // Parse SQL -> ExecutionPlan. Improvement idea: accept queries from CLI.
+    let sql = "SELECT SUM(supply_cost) FROM partsupp";
 
-    // // info!("Registering CSV as a table...");
-    // // let mut cat = Catalog::new();
-    // // cat.register_csv("employees", csv_path)?;
+    // extract_execution_plan now returns (table_name, column_name, agg_name)
+    let (table_name, column_name, agg_name) = extract_execution_plan(sql)?;
+    info!("Execution details -> table: {}, column: {}, agg: {}", table_name, column_name, agg_name);
 
-    // let logical = sql_to_logical_plan(sql)?;
-    // info!("LogicalPlan: {:#?}", logical);
+    // Validate that the requested table/column exist via gRPC call to computing node (filesystem stub)
+    let table_info = grpc_client::find_table(&table_name, &column_name)
+        .map_err(|e| anyhow::anyhow!("Failed to find table via computing node: {}", e))?;
 
-    // /*
-    // Fully working code for translating phPlan into circuit, uncomment when sql optimizing is done
-    //  */
-    // // Build circuit for e.g. 5 rows × 2 columns. Improvement idea: read table size dynamically from existing dataset.
-    // // Better: estimate how big is the row, and apply the same function to each row.
-    // let circuit = compile_to_circuit(&logical, 5, 2);
+    // TODO: compile logical plan to circuit
+    // let circuit = logical_to_circuits::compile_to_circuit(&logical, 5, 2);
     // info!("Circuit wire_count = {}", circuit.wire_count);
-    // info!("Circuit gates count = {}", circuit.gates.len());
-    // info!("Circuit outputs = {:?}", circuit.outputs);
 
-    // //log the circuit structure
-    // info!("Circuit gates: {:#?}", circuit.gates);
+    info!("Found table: {} with {} rows", table_info.table_name, table_info.row_count);
 
-    // // Log each gate
-    // for g in &circuit.gates {
-    //     info!("Gate: {:?}", g);
-    // }
-
-    /*
-    Runs the binary executor on a test table, not 100% working yet
-     */
-    run_partsupp::run_partsupp(None, None)?;
-  
     Ok(())
 }
-
-/*
-Displays the test table data in a human-readable format.
- */
-// fn display_row(row: &[Cell]) -> String {
-//     row.iter()
-//         .map(|c| match c {
-//             Cell::Int(v) => v.to_string(),
-//             Cell::Str(s) => s.clone(),
-//         })
-//         .collect::<Vec<_>>()
-//         .join(",")
-// }

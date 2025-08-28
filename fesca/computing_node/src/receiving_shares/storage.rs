@@ -5,6 +5,7 @@ use anyhow::Result;
 use std::fs;
 use std::io::Write;
 
+use crate::grpc_server::share_service;
 
 /// Handles storage of binary share data
 #[derive(Debug)]

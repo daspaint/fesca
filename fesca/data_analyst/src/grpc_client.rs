@@ -118,8 +118,8 @@ fn run_grpc_find_table(node_urls: &[String], table_name: &str, column_name: &str
         for url in node_urls {
             log::info!("Attempting FindTable RPC to {}", url);
 
-            // Use the generated find_table client (data_analyst crate compiled the proto into crate::find_table)
-            let client_res = crate::find_table::table_lookup_client::TableLookupClient::connect(url.clone()).await;
+            // Use the generated find_table client (data_analyst crate compiled the proto into crate::grpc_server::find_table)
+            let client_res = crate::grpc_client::find_table::table_lookup_client::TableLookupClient::connect(url.clone()).await;
             let mut client = match client_res {
                 Ok(c) => c,
                 Err(e) => {

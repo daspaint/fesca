@@ -1,12 +1,12 @@
 // Binary Share Storage
 // ====================
 // Handles storing binary share data received from data owners
+tonic::include_proto!("share_service"); 
 
 use anyhow::Result;
 use std::fs;
 use std::io::Write;
 
-use crate::share_service;
 
 /// Handles storage of binary share data
 #[derive(Debug)]

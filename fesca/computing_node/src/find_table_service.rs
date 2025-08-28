@@ -1,4 +1,6 @@
 // computing_node/src/find_table_service.rs
+tonic::include_proto!("find_table"); 
+
 use tonic::{Request, Response, Status};
 use std::path::PathBuf;
 use glob::glob;

@@ -1,4 +1,5 @@
-// data_analyst/src/grpc_client.rs
+tonic::include_proto!("find_table");  
+
 use anyhow::{bail, Context, Result};
 use std::fs;
 use std::path::PathBuf;

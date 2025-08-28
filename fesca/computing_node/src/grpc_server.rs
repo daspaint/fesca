@@ -3,6 +3,8 @@
 gRPC server implementation for receiving table shares from data owners and communicating
 with data analyst.
 */
+tonic::include_proto!("share_service"); 
+tonic::include_proto!("find_table"); 
 
 use anyhow::Result;
 use std::path::Path;

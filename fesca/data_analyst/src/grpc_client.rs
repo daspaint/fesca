@@ -6,7 +6,7 @@ use anyhow::{bail, Context, Result};
 use glob::glob;
 use std::fs;
 use std::path::PathBuf;
-use computing_node::calculcate::table_schema::Schema; 
+use table_schema::Schema; 
 
 #[derive(Debug, Clone)]
 pub struct TableInfo {

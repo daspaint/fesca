@@ -1,5 +1,5 @@
 mod parser;
-mod logical_to_circuits;
+// mod logical_to_circuits;
 mod circuit_builder;
 mod grpc_client;
 

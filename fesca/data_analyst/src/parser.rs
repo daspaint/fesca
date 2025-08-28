@@ -5,7 +5,7 @@ use anyhow::{Result, Context, bail};
 use log::info;
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
-use sqlparser::ast::{Expr, Function, SetExpr, Statement, TableFactor, SelectItem};
+use sqlparser::ast::{Expr, Function, SetExpr, Statement, TableFactor, SelectItem, FunctionArg, FunctionArgExpr};
 
 /// Parses the SQL and returns (table_name, column_name, aggregation_name)
 pub fn extract_execution_plan(sql: &str) -> Result<(String, String, String)> {
@@ -26,7 +26,7 @@ pub fn extract_execution_plan(sql: &str) -> Result<(String, String, String)> {
 
     match &ast[0] {
         Statement::Query(q) => {
-            if let SetExpr::Select(select) = &q.body {
+            if let SetExpr::Select(select) = &*q.body {
                 // FROM
                 if let Some(from) = select.from.get(0) {
                     match &from.relation {
@@ -47,18 +47,15 @@ pub fn extract_execution_plan(sql: &str) -> Result<(String, String, String)> {
                             // Expect first arg to be an identifier
                             if let Some(arg) = args.get(0) {
                                 match arg {
-                                    sqlparser::ast::FunctionArg::Unnamed(sqlparser::ast::Expr::Identifier(ident)) => {
+                                    FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Identifier(ident))) => {
                                         column_name = Some(ident.to_string());
                                     }
-                                    sqlparser::ast::FunctionArg::Unnamed(sqlparser::ast::Expr::CompoundIdentifier(idents)) => {
-                                        // take last part
+                                    FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::CompoundIdentifier(idents))) => {
                                         if let Some(last) = idents.last() {
                                             column_name = Some(last.to_string());
                                         }
                                     }
-                                    other => {
-                                        bail!("Unsupported function argument: {:?}", other)
-                                    }
+                                    other => bail!("Unsupported function argument: {:?}", other),
                                 }
                             } else {
                                 bail!("Aggregation function has no arguments")

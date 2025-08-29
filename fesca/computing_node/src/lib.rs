@@ -23,10 +23,10 @@ pub mod key_exchange {
 
 pub mod calculate {
     pub mod utils;
-    pub mod count;
-    pub mod extract_col;
-    pub mod sum;
-    pub mod avg;
+    // pub mod count; uncomment when implemented modularity
+    // pub mod extract_col;
+    // pub mod sum;
+    // pub mod avg;
 }
 
 use anyhow::Result;

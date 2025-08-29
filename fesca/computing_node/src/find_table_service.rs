@@ -103,7 +103,7 @@ impl TableLookupService {
         // This expects a local `crate::types::BinaryPartyData` with fields:
         //  - rows: Vec<BinaryRow>, where BinaryRow has bitstring_a: Vec<u8>, bitstring_b: Vec<u8>,
         //    column_bit_offsets: Vec<u32>, column_bit_lengths: Vec<u32>
-        let party: crate::types::BinaryPartyData = deserialize_binary_party_data(party_bytes)
+        let party: types::BinaryPartyData = deserialize_binary_party_data(party_bytes)
             .map_err(|e| Status::internal(format!("deserialize party bytes failed: {}", e)))?;
 
         let mut as_vec = Vec::with_capacity(party.rows.len());

@@ -98,8 +98,8 @@ async fn run_computing_node_async() -> Result<()> {
     //     info!("Key generation will be retried when other nodes come online");
     // }
     
-    // // Wait for the server to complete
-    // server_task.await?
+    // Wait for the server to complete
+    server_task.await?
 
-    Ok(()) // comment or delete when key_exchange is enabled
+    // Ok(()) // comment or delete when key_exchange is enabled
 }

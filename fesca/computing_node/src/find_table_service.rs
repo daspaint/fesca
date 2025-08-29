@@ -6,6 +6,7 @@ use std::fs;
 use log::{info, warn};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use data_owner::types;
 
 use crate::find_table::table_lookup_server::TableLookup;
 use crate::find_table::{
@@ -318,14 +319,27 @@ impl TableLookup for TableLookupService {
         &self,
         request: Request<ReceiveSharesRequest>,
     ) -> Result<Response<ReceiveSharesResponse>, Status> {
+        // take ownership of the message
         let r = request.into_inner();
-        let key = format!("{}::{}", r.table_name, r.column_name);
+
+        // copy the small fields we will need after moving `r` into the store
+        let table_name = r.table_name.clone();
+        let column_name = r.column_name.clone();
+        let sender_party_id = r.sender_party_id;
+
+        // insert the full request (moved) into the aggregator store
         {
             let mut store = self.aggregator_store.lock().unwrap();
-            let entry = store.entry(key).or_insert_with(Vec::new);
+            let entry = store.entry(format!("{}::{}", table_name, column_name)).or_insert_with(Vec::new);
             entry.push(r);
         }
-        info!("Received shares for {}::{} from party {}", request.get_ref().table_name, request.get_ref().column_name, request.get_ref().sender_party_id);
+
+        info!(
+            "Received shares for computation for {}::{} from party {}",
+            table_name, column_name, sender_party_id
+        );
+
         Ok(Response::new(ReceiveSharesResponse { ok: true, msg: "received".into() }))
     }
+
 }

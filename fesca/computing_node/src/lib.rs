@@ -21,6 +21,14 @@ pub mod key_exchange {
     pub mod key_exchange_server;
 }
 
+pub mod calculate {
+    pub mod utils;
+    pub mod count;
+    pub mod extract_col;
+    pub mod sum;
+    pub mod avg;
+}
+
 use anyhow::Result;
 use std::env;
 use log::{info, warn};

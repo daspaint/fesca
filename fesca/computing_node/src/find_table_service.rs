@@ -30,7 +30,7 @@ impl TableLookup for TableLookupService {
         let column_name = r.column_name;
 
         // pattern: {base_dir}/owner_*/<table_name>$
-        let pattern = format!("{}/owner_*/{}$", self.base_dir.display(), table_name);
+        let pattern = format!("{}/owner_*/{}", self.base_dir.display(), table_name);
 
         for entry in glob(&pattern).map_err(|e| Status::internal(format!("glob error: {}", e)))? {
             let table_dir = match entry {
@@ -72,6 +72,7 @@ impl TableLookup for TableLookupService {
                 row_count,
                 schema_json: data,
             };
+            info!("Table '{}' with column '{}' found at '{}'", table_name, column_name, table_dir.display());
 
             return Ok(Response::new(resp));
         }

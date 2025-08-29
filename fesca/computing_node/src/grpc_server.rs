@@ -128,12 +128,11 @@ pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
 
     info!("Starting computing node gRPC server on {}", addr);
     info!("Binary shares will be stored in: {}", storage_path);
-    info!("Key exchange service enabled for correlated randomness");
     info!("Find Table service enabled for table lookups");
 
     Server::builder()
         .add_service(ShareServiceServer::new(share_receiver))
-        .add_service(key_exchange_service)
+        // .add_service(key_exchange_service) commented for not spamming logs. Uncomment if needed
         .add_service(find_table_svc)
         .serve(addr)
         .await?;

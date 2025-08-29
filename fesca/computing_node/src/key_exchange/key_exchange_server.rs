@@ -156,5 +156,6 @@ impl KeyExchangeService for KeyExchangeReceiver {
 /// Create the KeyExchangeService server
 pub fn create_key_exchange_service(config: ComputingNodeConfig) -> KeyExchangeServiceServer<KeyExchangeReceiver> {
     let key_exchange_receiver = KeyExchangeReceiver::new(config);
+    info!("Key exchange service enabled for correlated randomness");
     KeyExchangeServiceServer::new(key_exchange_receiver)
 }

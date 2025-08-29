@@ -1,25 +1,30 @@
-// Share Receiver Server
-// =====================
-// gRPC server implementation for receiving binary table shares from data owners
-
+// computing_node/src/grpc_server.rs
+/* 
+gRPC server implementation for receiving table shares from data owners and communicating
+with data analyst.
+*/
 use anyhow::Result;
 use std::path::Path;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{transport::Server};
 use log::{info, error};
 
-// Include the generated protobuf code
-pub mod share_service {
-    tonic::include_proto!("share_service");
-}
+// Use the proto modules generated at crate root (lib.rs includes them)
+// use crate::share_service;
+use crate::share_service::share_service_server::{ShareService, ShareServiceServer};
+use crate::share_service::{SendTableSharesRequest, SendTableSharesResponse};
 
-use share_service::{
-    share_service_server::{ShareService, ShareServiceServer},
-    SendTableSharesRequest, SendTableSharesResponse,
-};
-
-use super::storage::BinaryShareStorage;
-use crate::key_exchange::correlated_randomness::ComputingNodeConfig;
+// key-exchange service helper
 use crate::key_exchange::key_exchange_server::create_key_exchange_service;
+
+// new find-table server impl (implementation file placed at src/find_table_service.rs)
+use crate::find_table_service::TableLookupService;
+use crate::find_table::table_lookup_server::TableLookupServer;
+
+// Storage module (kept under receiving_shares::storage)
+use crate::receiving_shares::storage::BinaryShareStorage;
+use crate::key_exchange::correlated_randomness::ComputingNodeConfig;
+
+use tonic::{Request, Response, Status};
 
 /// gRPC service implementation for receiving table shares
 #[derive(Debug)]
@@ -117,15 +122,20 @@ pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
     // Create key exchange service
     let key_exchange_service = create_key_exchange_service(config);
 
+    // base_dir used by the new TableLookupService is the same storage_path (converted to PathBuf)
+    let base_dir = std::path::PathBuf::from(storage_path.clone());
+    let find_table_svc = TableLookupServer::new(TableLookupService::new(base_dir));
+
     info!("Starting computing node gRPC server on {}", addr);
     info!("Binary shares will be stored in: {}", storage_path);
-    info!("Key exchange service enabled for correlated randomness");
+    info!("Find Table service enabled for table lookups");
 
     Server::builder()
         .add_service(ShareServiceServer::new(share_receiver))
-        .add_service(key_exchange_service)
+        // .add_service(key_exchange_service) commented for not spamming logs. Uncomment if needed
+        .add_service(find_table_svc)
         .serve(addr)
         .await?;
 
     Ok(())
-} 
+}

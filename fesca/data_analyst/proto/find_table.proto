@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package find_table;
+
+// Request to ask a computing node whether it hosts a table/column
+message FindTableRequest {
+  string table_name = 1;
+  string column_name = 2;
+}
+
+// Response: whether found, and some metadata
+message FindTableResponse {
+  bool found = 1;
+  string table_dir = 2;
+  uint64 row_count = 3;
+  string schema_json = 4;
+}
+
+// Service specifically for table discovery (separate from ShareService)
+service TableLookup {
+  rpc FindTable(FindTableRequest) returns (FindTableResponse);
+}

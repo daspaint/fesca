@@ -1,12 +1,11 @@
 // Binary Share Storage
 // ====================
 // Handles storing binary share data received from data owners
-
 use anyhow::Result;
 use std::fs;
 use std::io::Write;
 
-use super::server::share_service;
+use crate::share_service;
 
 /// Handles storage of binary share data
 #[derive(Debug)]

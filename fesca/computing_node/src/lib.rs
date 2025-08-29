@@ -100,4 +100,6 @@ async fn run_computing_node_async() -> Result<()> {
     
     // // Wait for the server to complete
     // server_task.await?
+
+    Ok(()) // comment or delete when key_exchange is enabled
 }

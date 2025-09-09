@@ -132,7 +132,7 @@ pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
 
     Server::builder()
         .add_service(ShareServiceServer::new(share_receiver))
-        // .add_service(key_exchange_service) commented for not spamming logs. Uncomment if needed
+        .add_service(key_exchange_service)
         .add_service(find_table_svc)
         .serve(addr)
         .await?;

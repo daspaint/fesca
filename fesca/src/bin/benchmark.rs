@@ -8,12 +8,13 @@ use tokio::{
 };
 use tonic::transport::Channel;
 
-// Reuse the Echo proto generated inside the computing_node crate
-// (your computing_node/bench_echo_service.rs has `pub mod bench { tonic::include_proto!("bench"); }`)
-use computing_node::bench_echo_service::bench::{self, echo_client::EchoClient, Payload};
+pub mod bench {
+    tonic::include_proto!("bench");
+}
+use bench::{echo_client::EchoClient, Payload};
 
 #[derive(Parser, Debug)]
-#[command(name="fesca-bench", about="FESCA networking & serde microbench")]
+#[command(name="fesca-benchmark", about="FESCA networking & protobuf microbench")]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -21,22 +22,19 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
-    /// gRPC echo: end-to-end RTT of one round-trip, with payload & concurrency
+    /// gRPC echo: one round-trip cost (latency, throughput), with payload and concurrency controls
     Grpc(CommArgs),
-
-    /// TCP echo: bare-bones transport (enable TCP_ECHO_ADDR on computing_node)
+    /// TCP echo: bare-bones comms (enable TCP_ECHO_ADDR on computing node)
     Tcp(TcpArgs),
-
-    /// Protobuf (prost) encode/decode only (no networking)
+    /// Protobuf (prost) serialization only (no networking)
     Serde(SerdeArgs),
-
-    /// Sweep payload sizes (grpc or tcp) in one run
+    /// Sweep payload sizes across gRPC or TCP
     Sweep(SweepArgs),
 }
 
 #[derive(Args, Debug, Clone)]
 struct CommArgs {
-    /// gRPC target; must include scheme, e.g. http://host:50051
+    /// gRPC target (your computing node): e.g. http://host:50051
     #[arg(long, default_value="http://127.0.0.1:50051")]
     target: String,
     /// message size in bytes
@@ -55,7 +53,7 @@ struct CommArgs {
 
 #[derive(Args, Debug, Clone)]
 struct TcpArgs {
-    /// TCP target host:port (e.g., host:6000). Start computing_node with TCP_ECHO_ADDR.
+    /// TCP target (your computing node): host:6000
     #[arg(long, default_value="127.0.0.1:6000")]
     target: String,
     #[arg(long, default_value_t=10_000)]
@@ -86,7 +84,7 @@ struct SweepArgs {
     /// Target (grpc: http://host:50051, tcp: host:6000)
     #[arg(long)]
     target: String,
-    /// Comma-separated sizes (bytes), e.g. 1000,10000,100000,1000000
+    /// Comma-separated sizes (bytes)
     #[arg(long, default_value="1000,10000,100000,1000000")]
     sizes: String,
     /// Parallel tasks
@@ -120,15 +118,20 @@ async fn make_client(target: &str) -> Result<EchoClient<Channel>> {
     Ok(EchoClient::new(ch))
 }
 
+async fn rpc_once(cli: &mut EchoClient<Channel>, bytes: usize) -> Result<u128> {
+    let msg = Payload { data: vec![0u8; bytes].into() };
+    let t0 = Instant::now();
+    let _ = cli.ping(tonic::Request::new(msg)).await?;
+    Ok(t0.elapsed().as_micros())
+}
+
 async fn bench_grpc(args: CommArgs) -> Result<()> {
     // warmup
     {
         let mut c = make_client(&args.target).await?;
-        for _ in 0..args.warmup {
-            let _ = rpc_once(&mut c, args.size).await?;
-        }
+        for _ in 0..args.warmup { let _ = rpc_once(&mut c, args.size).await?; }
     }
-    // run
+
     let mut hist = Histogram::<u64>::new_with_bounds(1, 60_000_000, 3)?;
     let per = args.iters / args.conc;
     let start = Instant::now();
@@ -147,35 +150,41 @@ async fn bench_grpc(args: CommArgs) -> Result<()> {
             local
         }));
     }
+
     let mut n = 0usize;
     for h in tasks {
         for v in h.await.unwrap() {
-            let _ = hist.record(v);
+            hist.record(v).ok();
             n += 1;
         }
     }
     let rps = (n as f64) / start.elapsed().as_secs_f64();
-    print_hist("gRPC", args.size, &args.target, &hist, rps);
+    print_hist("gRPC", args.size, &hist, rps, &args.target);
     Ok(())
 }
 
-async fn rpc_once(cli: &mut EchoClient<Channel>, bytes: usize) -> Result<u128> {
-    let msg = Payload { data: vec![0u8; bytes].into() };
+// ---------- TCP echo ----------
+async fn tcp_once(s: &mut TcpStream, bytes: usize) -> Result<u128> {
+    let buf = vec![0u8; bytes];
+    let len = (bytes as u32).to_be_bytes();
     let t0 = Instant::now();
-    let _ = cli.ping(tonic::Request::new(msg)).await?;
+    s.write_all(&len).await?;
+    s.write_all(&buf).await?;
+    let mut len_buf = [0u8; 4];
+    s.read_exact(&mut len_buf).await?;
+    let resp_len = u32::from_be_bytes(len_buf) as usize;
+    let mut resp = vec![0u8; resp_len];
+    s.read_exact(&mut resp).await?;
     Ok(t0.elapsed().as_micros())
 }
 
-// ---------- TCP echo ----------
 async fn bench_tcp(args: TcpArgs) -> Result<()> {
     // warmup
     {
         let mut s = TcpStream::connect(&args.target).await?;
-        for _ in 0..args.warmup {
-            let _ = tcp_once(&mut s, args.size).await?;
-        }
+        for _ in 0..args.warmup { let _ = tcp_once(&mut s, args.size).await?; }
     }
-    // run
+
     let mut hist = Histogram::<u64>::new_with_bounds(1, 60_000_000, 3)?;
     let per = args.iters / args.conc;
     let start = Instant::now();
@@ -194,30 +203,17 @@ async fn bench_tcp(args: TcpArgs) -> Result<()> {
             local
         }));
     }
+
     let mut n = 0usize;
     for h in tasks {
         for v in h.await.unwrap() {
-            let _ = hist.record(v);
+            hist.record(v).ok();
             n += 1;
         }
     }
     let rps = (n as f64) / start.elapsed().as_secs_f64();
-    print_hist("TCP", args.size, &args.target, &hist, rps);
+    print_hist("TCP", args.size, &hist, rps, &args.target);
     Ok(())
-}
-
-async fn tcp_once(s: &mut TcpStream, bytes: usize) -> Result<u128> {
-    let buf = vec![0u8; bytes];
-    let len = (bytes as u32).to_be_bytes();
-    let t0 = Instant::now();
-    s.write_all(&len).await?;
-    s.write_all(&buf).await?;
-    let mut len_buf = [0u8; 4];
-    s.read_exact(&mut len_buf).await?;
-    let resp_len = u32::from_be_bytes(len_buf) as usize;
-    let mut resp = vec![0u8; resp_len];
-    s.read_exact(&mut resp).await?;
-    Ok(t0.elapsed().as_u128())
 }
 
 // ---------- Protobuf serde ----------
@@ -260,14 +256,14 @@ async fn sweep(a: SweepArgs) -> Result<()> {
         match a.mode.as_str() {
             "grpc" => {
                 bench_grpc(CommArgs{
-                    target: a.target.clone(), size: sz,
-                    iters: a.iters, conc: a.conc, warmup: a.warmup
+                    target: a.target.clone(),
+                    size: sz, iters: a.iters, conc: a.conc, warmup: a.warmup
                 }).await?;
             }
             "tcp" => {
                 bench_tcp(TcpArgs{
-                    target: a.target.clone(), size: sz,
-                    iters: a.iters, conc: a.conc, warmup: a.warmup
+                    target: a.target.clone(),
+                    size: sz, iters: a.iters, conc: a.conc, warmup: a.warmup
                 }).await?;
             }
             _ => unreachable!(),
@@ -276,7 +272,7 @@ async fn sweep(a: SweepArgs) -> Result<()> {
     Ok(())
 }
 
-fn print_hist(tag: &str, sz: usize, target: &str, hist: &Histogram<u64>, rps: f64) {
+fn print_hist(tag: &str, sz: usize, hist: &Histogram<u64>, rps: f64, target: &str) {
     println!(
         "{tag} {sz}B @ {target} -> p50={:.3} ms p95={:.3} ms p99={:.3} ms max={:.3} ms | {:.0} req/s",
         hist.value_at_percentile(50.0) as f64 / 1000.0,

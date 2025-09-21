@@ -217,7 +217,7 @@ async fn tcp_once(s: &mut TcpStream, bytes: usize) -> Result<u128> {
     let resp_len = u32::from_be_bytes(len_buf) as usize;
     let mut resp = vec![0u8; resp_len];
     s.read_exact(&mut resp).await?;
-    Ok(t0.elapsed().as_u128())
+    Ok(t0.elapsed().as_micros())
 }
 
 // ---------- Protobuf serde ----------

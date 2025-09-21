@@ -14,6 +14,11 @@ pub mod share_service {
 pub mod grpc_server;
 // Find table server implementation
 pub mod find_table_service;
+pub mod bench_echo_service;
+
+// TCP echo server for benchmarking (not used in main FESCA project)
+pub mod tcp_echo_server;
+
 
 // Key exchange utilities
 pub mod key_exchange {
@@ -66,6 +71,11 @@ async fn run_computing_node_async() -> Result<()> {
     info!("Starting computing node server...");
     info!("Port: {}", port);
     info!("Storage: {}", storage_path);
+
+    // Start optional TCP benchmark echo (only if TCP_ECHO_ADDR is set)
+    if let Some(addr) = crate::tcp_echo_server::maybe_start_tcp_echo().await {
+        info!("TCP_benchmark server is started and is listening too on {}", addr);
+    }
     
     // Start the server in a background task
     let server_task = tokio::spawn(start_server(port, storage_path.clone()));

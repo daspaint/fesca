@@ -20,6 +20,8 @@ use crate::key_exchange::key_exchange_server::create_key_exchange_service;
 use crate::find_table_service::TableLookupService;
 use crate::find_table::table_lookup_server::TableLookupServer;
 
+use crate::bench_echo_service::make_echo_server;
+
 // Storage module (kept under receiving_shares::storage)
 use crate::receiving_shares::storage::BinaryShareStorage;
 use crate::key_exchange::correlated_randomness::ComputingNodeConfig;
@@ -125,6 +127,7 @@ pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
     // base_dir used by the new TableLookupService is the same storage_path (converted to PathBuf)
     let base_dir = std::path::PathBuf::from(storage_path.clone());
     let find_table_svc = TableLookupServer::new(TableLookupService::new(base_dir));
+    let echo_svc = make_echo_server();
 
     info!("Starting computing node gRPC server on {}", addr);
     info!("Binary shares will be stored in: {}", storage_path);
@@ -134,6 +137,7 @@ pub async fn start_server(port: u16, storage_path: String) -> Result<()> {
         .add_service(ShareServiceServer::new(share_receiver))
         // .add_service(key_exchange_service) commented for not spamming logs. Uncomment if needed
         .add_service(find_table_svc)
+        .add_service(echo_svc)   
         .serve(addr)
         .await?;
 

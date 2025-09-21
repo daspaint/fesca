@@ -1,0 +1,10 @@
+syntax = "proto3";
+package bench;
+
+service Echo {
+  rpc Ping(Payload) returns (Payload);
+}
+
+message Payload {
+  bytes data = 1;
+}

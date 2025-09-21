@@ -16,7 +16,51 @@ message FindTableResponse {
   string schema_json = 4;
 }
 
-// Service specifically for table discovery (separate from ShareService)
+message ExtractAndForwardRequest {
+  string table_name = 1;
+  string column_name = 2;
+  string aggregator_url = 3; // e.g. "http://zs04.lab...:50051"
+  uint32 party_id = 4; // 0/1/2 - which party this node is
+}
+
+message ExtractAndForwardResponse {
+  bool ok = 1;
+  string message = 2;
+}
+
+message ExtractAndComputeRequest {
+  string table_name = 1;
+  string column_name = 2;
+  uint32 party_id = 3; //aggregator's party id
+  uint64 row_count = 4;
+}
+
+message ExtractAndComputeResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 sum_result = 3; // simple numeric result for SUM stub (adjust type as needed)
+}
+
+message ReceiveSharesRequest {
+  string table_name = 1;
+  string column_name = 2;
+  uint32 sender_party_id = 3;
+  repeated bytes bitstring_a = 4; // repeated per row
+  repeated bytes bitstring_b = 5;
+  repeated uint32 column_offsets = 6;
+  repeated uint32 column_lengths = 7;
+}
+
+message ReceiveSharesResponse {
+  bool ok = 1;
+  string msg = 2;
+}
+
 service TableLookup {
   rpc FindTable(FindTableRequest) returns (FindTableResponse);
+  // New RPC: ask node to extract its column and forward to aggregator (non-blocking)
+  rpc ExtractAndForward(ExtractAndForwardRequest) returns (ExtractAndForwardResponse);
+  // New RPC on aggregator: aggregator can be called to extract and compute (blocking, returns final result)
+  rpc ExtractAndCompute(ExtractAndComputeRequest) returns (ExtractAndComputeResponse);
+  rpc ReceiveShares(ReceiveSharesRequest) returns (ReceiveSharesResponse);
 }

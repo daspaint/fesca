@@ -3,6 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 use crate::table_schema::Schema;
 use serde::Deserialize;
+use tonic::Request;
+use std::time::Duration;
 
 
 #[derive(Debug, Clone)]
@@ -65,7 +67,7 @@ pub fn find_table(table_name: &str, column_name: &str) -> Result<TableInfo> {
 
     // Fallback: original filesystem lookup (unchanged)
     let home = dirs::home_dir().context("Could not determine home directory")?;
-    let pattern = format!("{}/fesca_shares/owner_*/{}$", home.display(), table_name);
+    let pattern = format!("{}/fesca_shares/owner_*/{}", home.display(), table_name);
 
     let mut matches = Vec::new();
     for entry in glob::glob(&pattern).context("Failed to glob fesca_shares pattern")? {
@@ -165,3 +167,113 @@ fn run_grpc_find_table(node_urls: &[String], table_name: &str, column_name: &str
         Err(anyhow::anyhow!("No computing nodes reported hosting the table"))
     })
 }
+
+
+/// Orchestrate compute request automatically:
+/// - node_urls: list of computing node grpc endpoints (must map to party ids 0..N-1)
+/// - aggregator_index: index in node_urls chosen as aggregator (we use 0 by default when calling)
+/// - table_name, column_name, agg_name: extracted from SQL
+/// - row_count: from the schema (table_info.row_count)
+///
+/// Returns the final aggregation result (u64 for SUM stub). Errors if any RPC fails.
+pub fn start_compute_request(
+    node_urls: &[String],
+    table_name: &str,
+    column_name: &str,
+    agg_name: &str,
+    row_count: u64,
+) -> Result<u64> {
+    // Quick validations
+    if node_urls.is_empty() {
+        anyhow::bail!("No computing node URLs provided in configuration");
+    }
+
+    // Choose aggregator as first node by default
+    let aggregator = node_urls[0].clone();
+
+    // Block on an async runtime
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async move {
+        // 1) For each non-aggregator node: call ExtractAndForward
+        for (i, url) in node_urls.iter().enumerate() {
+            if url == &aggregator {
+                continue;
+            }
+
+            log::info!("Calling ExtractAndForward on node {} ({})", i, url);
+
+            // Build client
+            let client_res = crate::find_table::table_lookup_client::TableLookupClient::connect(url.clone()).await;
+            let mut client = match client_res {
+                Ok(c) => c,
+                Err(e) => {
+                    log::warn!("Could not connect to {}: {}", url, e);
+                    return Err(anyhow::anyhow!("Failed to connect to node {}: {}", url, e));
+                }
+            };
+
+            // Build request
+            let req = crate::find_table::ExtractAndForwardRequest {
+                table_name: table_name.to_string(),
+                column_name: column_name.to_string(),
+                aggregator_url: aggregator.clone(),
+                party_id: i as u32,
+            };
+
+            // Call with timeout
+            let call = tokio::time::timeout(Duration::from_secs(10), client.extract_and_forward(Request::new(req))).await;
+            match call {
+                Ok(Ok(_resp)) => {
+                    log::info!("ExtractAndForward succeeded on {}", url);
+                }
+                Ok(Err(e)) => {
+                    log::warn!("ExtractAndForward RPC to {} failed: {}", url, e);
+                    return Err(anyhow::anyhow!("ExtractAndForward RPC failed to {}: {}", url, e));
+                }
+                Err(_) => {
+                    log::warn!("ExtractAndForward RPC to {} timed out", url);
+                    return Err(anyhow::anyhow!("ExtractAndForward RPC to {} timed out", url));
+                }
+            }
+        } // end loop non-aggregators
+
+        // 2) Call aggregator ExtractAndCompute (aggregator extracts local shares, waits for forwarded ones, reconstructs & computes)
+        log::info!("Calling ExtractAndCompute on aggregator {}", &aggregator);
+        let client_res = crate::find_table::table_lookup_client::TableLookupClient::connect(aggregator.clone()).await;
+        let mut agg_client = match client_res {
+            Ok(c) => c,
+            Err(e) => {
+                log::warn!("Could not connect to aggregator {}: {}", aggregator, e);
+                return Err(anyhow::anyhow!("Failed to connect to aggregator {}: {}", aggregator, e));
+            }
+        };
+
+        let req2 = crate::find_table::ExtractAndComputeRequest {
+            table_name: table_name.to_string(),
+            column_name: column_name.to_string(),
+            party_id: 0, // aggregator party id (adjust if aggregator is not party 0)
+            row_count,
+        };
+
+        let call2 = tokio::time::timeout(Duration::from_secs(60), agg_client.extract_and_compute(Request::new(req2))).await;
+        match call2 {
+            Ok(Ok(response)) => {
+                let inner = response.into_inner();
+                if inner.success {
+                    let res = inner.sum_result;
+                    log::info!("Aggregate computation finished: {}", res);
+                    Ok(res)
+                } else {
+                    Err(anyhow::anyhow!("Aggregator reported failure: {}", inner.message))
+                }
+            }
+            Ok(Err(e)) => {
+                Err(anyhow::anyhow!("ExtractAndCompute RPC failed: {}", e))
+            }
+            Err(_) => {
+                Err(anyhow::anyhow!("ExtractAndCompute RPC to aggregator timed out"))
+            }
+        }
+    })
+}
+

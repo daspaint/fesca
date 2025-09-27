@@ -3,7 +3,7 @@ name = "fesca"
 version = "0.1.0"
 edition = "2024"
 description = "Framework for Efficient Secure Collaborative Analytics"
-authors = ["Mimoun Mendoughe", "Darya Igonina", "Alisher Darmenov", "Denis Boztepe"]
+authors = ["Mimoun Mendoughe", "Darya Igonina"]
 readme = "README.md"
 
 [workspace]
@@ -11,15 +11,13 @@ resolver = "3"
 members = [
     "data_analyst",
     "data_owner",
-    "computing_node",
-    "helpers"
+    "computing_node"
 ]
 
 [dependencies]
 data_analyst = { version = "0.1.0", path = "data_analyst" }
 data_owner = { version = "0.1.0", path = "data_owner" }
 computing_node = { version = "0.1.0", path = "computing_node" }
-helpers = { version = "0.1.0", path = "helpers" }
 rand = "0.9.1"
 serde = "1.0.219"
 anyhow = "1.0.98"

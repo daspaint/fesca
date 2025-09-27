@@ -1,7 +1,3 @@
-Here’s a drop-in **README.md** for your repo.
-
----
-
 # FESCA — Framework for Efficient Secure Collaborative Analytics
 
 FESCA is a modular prototype of a relational MPC (Multi-Party Computation) system written in **Rust**. It lets multiple data owners run SQL-style analytics over secret-shared data across **three computing nodes** without revealing raw inputs. The system focuses on a clean, extensible architecture, practical transport (gRPC/HTTP-2), and measurable performance on a LAN.
@@ -231,5 +227,3 @@ fesca/                    # workspace
 * Optional “volcano” batching executor
 
 ---
-
-> **Note:** Add a license file (e.g., MIT/Apache-2.0) if you plan to share or accept contributions.

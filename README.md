@@ -1,52 +1,235 @@
-# Framework for efficient Secure Collaborative Analytics
+Here’s a drop-in **README.md** for your repo.
 
-Meeting each Friday at 16:00
+---
 
+# FESCA — Framework for Efficient Secure Collaborative Analytics
 
-# Structure of Repo
+FESCA is a modular prototype of a relational MPC (Multi-Party Computation) system written in **Rust**. It lets multiple data owners run SQL-style analytics over secret-shared data across **three computing nodes** without revealing raw inputs. The system focuses on a clean, extensible architecture, practical transport (gRPC/HTTP-2), and measurable performance on a LAN.
 
+> Paper context: FESCA was inspired by **SECRECY (NSDI’23)** but built from scratch in Rust with a modular design, gRPC transport, and a built-in benchmarking workflow.
 
-## Documentation
-- `/docs` - all documentation and material is contained here
-- `/docs/preparation` - extra preparation material
-- `/docs/Secrecy` - working project of Secrecy test
-- `/fesca` - main project
-- `/fesca/data_owner` - main project for data owner
-- `/fesca/computing_node` - main project for computing nodes
-- `/fesca/data_analyst` - main project for data analyst
+---
 
+## Table of contents
 
+* [Architecture](#architecture)
+* [Crates & binaries](#crates--binaries)
+* [Getting started](#getting-started)
+* [Configuration](#configuration)
+* [Running the system](#running-the-system)
+* [Benchmarking gRPC/TCP](#benchmarking-grpctcp)
+* [Correlated randomness & key exchange](#correlated-randomness--key-exchange)
+* [What we measured (quick guidance)](#what-we-measured-quick-guidance)
+* [Repo layout](#repo-layout)
+* [Roadmap](#roadmap)
 
-# Preparation Material
+---
 
-## Project Profile
-[Overleaf](https://sharelatex.tu-darmstadt.de/project/681dcd5358308663611983b5)
+## Architecture
 
-## Rust
+FESCA follows a **3-party MPC** layout with **replicated/XOR secret sharing**:
 
-- [Rust book](https://doc.rust-lang.org/book/)
-- [Rust exercises](https://github.com/rust-lang/rustlings)
+* **Data Owner (DO):** reads a local table, encodes it to a binary format, **secret-shares** each bit into three shares `a,b,c` (with `a ⊕ b ⊕ c = value`), and ships the shares to the computing nodes over gRPC.
+* **Computing Nodes (CN ×3):** store their assigned shares; validate table/column; translate the requested operation into a Boolean circuit; execute secure computation; send back results.
+* **Data Analyst (DA):** accepts a (public) SQL-like query, builds a minimal logical plan (table/column/aggregation), verifies availability with DO/CN via gRPC, triggers computation, and **reconstructs** the result from the three replies.
 
-## Query papers 
+Transport is **gRPC/HTTP-2** on port **50051**. A lightweight benchmarking tool and optional TCP echo server are included.
 
-- [Oblivious Query Execution](https://github.com/CASP-Systems-BU/Secrecy/tree/main)
-- [Conversion of some traditional database operators and basic logic gates](https://www.usenix.org/system/files/nsdi23-liagouris.pdf)
-- Micro-benchmark of the framework on some real-world datasets (e.g., Hospital, Financial Organization)
-## Special preparation
-- [Execution of XOR, AND gate protocol] (./docs/)
+---
 
-# Goals
+## Crates & binaries
 
-## Common Goals
+* `data_owner/` — Data Owner library & runner
+* `data_analyst/` — Data Analyst library & runner
+* `computing_node/` — Computing Node library & gRPC server implementations
+* `helpers/` — shared utilities
+* `fesca/` — workspace binary:
 
-- Implement a communication framework (based on gRPC) that allows computing nodes to exchange messages in general  => Rust: tonic
-- Implement the Replicated Secret Sharing (RSS) protocol that includes:
-- - Correlated Randomness Generation
-- - Message Exchange among computing nodes
-- - Execution of XOR, AND gate protocol  (I will send you a one-bit example)
+  * `cargo run -- data_owner` (DO)
+  * `cargo run -- computing_node` (CN)
+  * `cargo run -- data_analyst` (DA)
+  * `cargo run --bin benchmark` (standalone benchmark tool, for this checkout to branch 50-evaluate)
 
-## Goals for 9 CP 
-- Integrate advanced oblivious operators (LIKE, Order By...)
-- Optimizations of existing protocols or queries (Reduce online computing costs...)
-- An accurate model to convert queries to basic logic gate (not just rule-based)
-- A full benchmark on more real world queries
+---
+
+## Getting started
+
+### Prerequisites
+
+* Rust toolchain (stable)
+* Access to three hosts (or three terminals) for CNs + one host for DO/DA
+* LAN connectivity between hosts
+
+### Build
+
+```bash
+# From repository root
+cargo build
+```
+
+---
+
+## Configuration
+
+### Data Owner config
+
+`data_owner/config_data_owner.json`
+
+```json
+{
+  "computing_nodes": {
+    "node0_url": "http://<CN0_HOST>:50051",
+    "node1_url": "http://<CN1_HOST>:50051",
+    "node2_url": "http://<CN2_HOST>:50051"
+  }
+}
+```
+
+Set env var (optional):
+
+```bash
+export DATA_OWNER_CONFIG=data_owner/config_data_owner.json
+```
+
+### Computing Node config
+
+`computing_node/config_computing_node.json`
+Contains node identity, storage path, and (optionally) endpoints used by key-exchange/correlated-randomness.
+
+Default gRPC port: **50051**
+Default storage path: `~/fesca_shares`
+
+---
+
+## Running the system
+
+> Order: **Data Owner → 3× Computing Node → Data Analyst**
+
+1. **Start Data Owner (DO)**
+
+```bash
+cargo run -- data_owner
+```
+
+* Loads a local table (`*.tbl`) + its JSON metadata.
+* Encodes to binary, splits into `a,b,c` shares.
+* Sends shares to the three CNs via gRPC.
+
+2. **Start Computing Nodes (CNs) on three hosts**
+
+```bash
+# On each of three hosts
+cargo run -- computing_node
+```
+
+* Starts gRPC server on `0.0.0.0:50051`
+* Services: receive shares, find table, compute/extract, (optional) key-exchange & CR
+
+3. **Start Data Analyst (DA)**
+
+```bash
+cargo run -- data_analyst
+```
+
+* Accepts a public SQL-like query (e.g., `SELECT SUM(supply_cost) FROM partsupp`)
+* Extracts `(table, column, aggregation)` and validates via gRPC
+* Triggers the compute protocol and reconstructs the result
+
+---
+
+## Benchmarking gRPC/TCP
+
+A separate binary **`benchmark`** exercises the transport layer independently of MPC. For this checkout the branch **`50-evaluate`**.
+
+### gRPC latency/goodput vs payload (CN must be running)
+
+```bash
+cargo run --bin benchmark -- \
+  grpc \
+  --target http://<CN_HOST>:50051 \
+  --size 10000 \
+  --iters 500 \
+  --conc 16 \
+  --warmup 50
+```
+
+### Concurrency sweep (fixed size)
+
+```bash
+for c in 1 4 16 32 64 128; do
+  cargo run --bin benchmark -- grpc \
+    --target http://<CN_HOST>:50051 \
+    --size 10000 --iters 1000 --conc $c --warmup 50
+done
+```
+
+### TCP baseline (optional)
+
+Start TCP echo on CN host:
+
+```bash
+TCP_ECHO_ADDR=0.0.0.0:6000 cargo run -- computing_node
+```
+
+Then from benchmark host:
+
+```bash
+cargo run --bin benchmark -- \
+  tcp --target <CN_HOST>:6000 \
+  --size 10000 --iters 500 --conc 16 --warmup 50
+```
+
+### Serialization-only (Protobuf)
+
+```bash
+cargo run --bin benchmark -- serde --size 10000 --iters 10000
+# Example result:
+# Protobuf 10000B -> enc ~0.290 µs/op, dec ~1.027 µs/op
+```
+
+---
+
+## Correlated randomness & key exchange
+
+FESCA includes a simple **key exchange** service that lets each node exchange small seeds over gRPC and then locally expand them into **correlated randomness** (CR) via a PRG. With CR available:
+
+* **XOR** gates are local (no rounds).
+* **AND** gates use one masked open per layer (one synchronization round), leveraging **AND triples** provided by CR.
+
+This aligns with the transport evaluation: we batch many gates per round (≈100–256 KB payloads) and keep **16–32** RPCs in flight to hit a good latency/throughput trade-off on a LAN.
+
+---
+
+## What we measured (quick guidance)
+
+* **Sweet spot (LAN, gRPC):** ~**16–32** concurrent RPCs; **100–256 KB** payloads.
+* **Per-round budget:** ~**2–3 ms** for small batches; **~12–20+ ms** around 100 KB.
+* **TCP vs gRPC:** TCP is a bit lower latency at the same size, but gRPC’s ecosystem (TLS, Protobuf, tooling) and **fat-batch friendliness** made it the better fit for MPC rounds.
+* **Protobuf cost:** sub-microsecond per op; negligible vs millisecond network rounds.
+
+---
+
+## Repo layout
+
+```
+fesca/                    # workspace
+├─ data_owner/            # DO crate
+├─ data_analyst/          # DA crate
+├─ computing_node/        # CN crate (gRPC services, storage, optional TCP echo)
+└─ src/                 
+   └─ main.rs
+```
+
+---
+
+## Roadmap
+
+* Secure XOR/AND protocol path integrated end-to-end (using CR AND-triples)
+* More SQL operators (joins, filters, group-by) via circuit compiler
+* Cost-based optimizer using measured per-round costs
+* Config auto-generation for table metadata (DO)
+* Optional “volcano” batching executor
+
+---
+
+> **Note:** Add a license file (e.g., MIT/Apache-2.0) if you plan to share or accept contributions.

@@ -2,7 +2,7 @@
 The main entry point for the FESCA framework.
 This file sets up the command-line interface and starts the appropriate role based on user input.
 Example usage:
-    cargo run -- --role DataOwner
+    cargo run -- data_owner
  */
 use std::{error::Error, process};
 use clap::{Parser, ValueEnum, error::ErrorKind};

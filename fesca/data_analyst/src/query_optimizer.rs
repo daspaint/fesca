@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// Simple query-optimizer utilities (local, planner-friendly)
+// Optimizer-stub, may be extended
 // -----------------------------------------------------------------------------
 // The optimizer below is intentionally small and purpose-built for the
 // `LogicalPlan` shape used in the data_analyst. It implements two gentle

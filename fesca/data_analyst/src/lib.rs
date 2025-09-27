@@ -14,7 +14,15 @@ pub mod find_table {
 
 /// Entry point for Data Analyst
 pub fn run() -> Result<()> {
-    // Parse SQL -> ExecutionPlan. Improvement idea: accept queries from CLI.
+    // Parse SQL -> ExecutionPlan. Uncomment to take SQL from command line
+    // let sql = {
+    // let args: Vec<String> = std::env::args().skip(1).collect();
+    // if args.is_empty() {
+    //     anyhow::bail!("No SQL provided!")
+    // }
+    // args.join(" ")
+    // };
+
     let sql = "SELECT SUM(supply_cost) FROM partsupp";
 
     // extract_execution_plan now returns (table_name, column_name, agg_name)

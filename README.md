@@ -38,8 +38,6 @@ Transport is **gRPC/HTTP-2** on port **50051**. A lightweight benchmarking tool 
 * `data_owner/` — Data Owner library & runner
 * `data_analyst/` — Data Analyst library & runner
 * `computing_node/` — Computing Node library & gRPC server implementations
-* `helpers/` — shared utilities
-* `fesca/` — workspace binary:
 
   * `cargo run -- data_owner` (DO)
   * `cargo run -- computing_node` (CN)
@@ -119,7 +117,7 @@ cargo run -- computing_node
 ```
 
 * Starts gRPC server on `0.0.0.0:50051`
-* Services: receive shares, find table, compute/extract, (optional) key-exchange & CR
+* Services: receive shares, find table, compute/extract, (optional) key-exchange & correlated randomness
 
 3. **Start Data Analyst (DA)**
 
